@@ -1,0 +1,13 @@
+package com.example.ppos.data
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+
+@Database(
+    entities = [Area::class, DiningTable::class, Order::class, OrderItem::class],
+    version = 1,
+    exportSchema = false
+)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun posDao(): PosDao
+}
