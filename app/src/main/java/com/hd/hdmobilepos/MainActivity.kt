@@ -73,7 +73,10 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             AppDatabase::class.java,
             "ppos.db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigrationOnDowngrade()
+            .build()
         val repo = PosRepository(db.posDao())
 
         setContent {
