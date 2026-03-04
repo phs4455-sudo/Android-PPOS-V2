@@ -6,7 +6,11 @@ import kotlinx.coroutines.flow.map
 class PosRepository(private val dao: PosDao) {
     fun observeAreas(): Flow<List<Area>> = dao.observeAreas()
 
+    suspend fun getAreasOnce(): List<Area> = dao.getAreasOnce()
+
     fun observeTables(areaId: Long): Flow<List<TableSummary>> = dao.observeTableSummaries(areaId)
+
+    suspend fun getTablesOnce(areaId: Long): List<TableSummary> = dao.getTableSummariesOnce(areaId)
 
     fun observeCurrentOrderItems(tableId: Long): Flow<List<OrderItemRow>> = dao.observeCurrentOrderItems(tableId)
 

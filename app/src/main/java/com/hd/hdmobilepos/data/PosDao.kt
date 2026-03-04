@@ -12,6 +12,9 @@ interface PosDao {
     @Query("SELECT * FROM areas ORDER BY sortOrder")
     fun observeAreas(): Flow<List<Area>>
 
+    @Query("SELECT * FROM areas ORDER BY sortOrder")
+    suspend fun getAreasOnce(): List<Area>
+
     @Query(
         """
         SELECT t.id AS tableId,
@@ -33,6 +36,28 @@ interface PosDao {
         """
     )
     fun observeTableSummaries(areaId: Long): Flow<List<TableSummary>>
+
+    @Query(
+        """
+        SELECT t.id AS tableId,
+               t.name AS tableName,
+               t.status AS status,
+               t.capacity AS capacity,
+               COALESCE(o.totalAmount, 0) AS totalAmount,
+               o.createdAt AS createdAt
+        FROM tables t
+        LEFT JOIN orders o ON o.id = (
+            SELECT o2.id
+            FROM orders o2
+            WHERE o2.tableId = t.id
+            ORDER BY o2.createdAt DESC, o2.id DESC
+            LIMIT 1
+        )
+        WHERE t.areaId = :areaId
+        ORDER BY t.id
+        """
+    )
+    suspend fun getTableSummariesOnce(areaId: Long): List<TableSummary>
 
     @Query(
         """

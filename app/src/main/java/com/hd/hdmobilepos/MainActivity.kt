@@ -157,6 +157,19 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             _uiState.update { it.copy(isReseeding = true) }
             try {
                 repository.forceReseedDemoData()
+                val areas = repository.getAreasOnce()
+                val selectedArea = areas.firstOrNull()?.id
+                val tables = selectedArea?.let { repository.getTablesOnce(it) }.orEmpty()
+                val selectedTable = tables.firstOrNull()?.tableId
+                _uiState.update {
+                    it.copy(
+                        areas = areas,
+                        selectedAreaId = selectedArea,
+                        tables = tables,
+                        selectedTableId = selectedTable
+                    )
+                }
+                selectedTable?.let(::observeRightPanel)
             } finally {
                 _uiState.update { it.copy(isReseeding = false) }
             }
