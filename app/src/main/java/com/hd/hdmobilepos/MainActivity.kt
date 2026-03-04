@@ -151,6 +151,12 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
         observeRightPanel(tableId)
     }
 
+    fun reseedDemoData() {
+        viewModelScope.launch {
+            repository.seedIfNeeded()
+        }
+    }
+
     private fun observeTables(areaId: Long) {
         tableObserverJob?.cancel()
         tableObserverJob = viewModelScope.launch {
@@ -255,6 +261,25 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                 text = { Text(area.name) }
                             )
                         }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("표시할 구역/테이블이 없습니다")
+                        OutlinedButton(onClick = { vm.reseedDemoData() }) {
+                            Text("샘플데이터 재생성")
+                        }
+                    }
+                }
+
+                if (uiState.tables.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("테이블 데이터가 없습니다. 샘플데이터 재생성을 눌러주세요.")
                     }
                 }
 
