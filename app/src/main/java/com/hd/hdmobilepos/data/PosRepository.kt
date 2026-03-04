@@ -16,6 +16,14 @@ class PosRepository(private val dao: PosDao) {
 
     suspend fun getAreaCount(): Int = dao.getAreaCount()
 
+    suspend fun findFirstAreaIdWithTables(): Long? {
+        val areas = getAreasOnce()
+        for (area in areas) {
+            if (getTablesOnce(area.id).isNotEmpty()) return area.id
+        }
+        return areas.firstOrNull()?.id
+    }
+
     fun observeCurrentOrderItems(tableId: Long): Flow<List<OrderItemRow>> = dao.observeCurrentOrderItems(tableId)
 
     fun observeActiveOrderDetails(tableId: Long): Flow<ActiveOrderDetails?> {

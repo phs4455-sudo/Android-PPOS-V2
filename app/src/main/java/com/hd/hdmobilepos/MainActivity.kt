@@ -128,12 +128,9 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            repository.seedIfNeeded()
-            if (repository.getTableCount() == 0) {
-                repository.forceReseedDemoData()
-            }
+            bootstrapData()
             repository.observeAreas().collectLatest { areas ->
-                val selectedArea = _uiState.value.selectedAreaId ?: areas.firstOrNull()?.id
+                val selectedArea = _uiState.value.selectedAreaId ?: repository.findFirstAreaIdWithTables()
                 _uiState.update { it.copy(areas = areas, selectedAreaId = selectedArea) }
                 selectedArea?.let(::observeTables)
             }
@@ -161,28 +158,44 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             _uiState.update { it.copy(isReseeding = true, reseedMessage = null) }
             try {
                 repository.forceReseedDemoData()
-                val areas = repository.getAreasOnce()
-                val selectedArea = areas.firstOrNull()?.id
-                val tables = selectedArea?.let { repository.getTablesOnce(it) }.orEmpty()
-                val selectedTable = tables.firstOrNull()?.tableId
-                val areaCount = repository.getAreaCount()
-                val tableCount = repository.getTableCount()
-                _uiState.update {
-                    it.copy(
-                        areas = areas,
-                        selectedAreaId = selectedArea,
-                        tables = tables,
-                        selectedTableId = selectedTable,
-                        reseedMessage = "재생성 완료: 구역 ${areaCount}개 / 테이블 ${tableCount}개"
-                    )
-                }
-                selectedTable?.let(::observeRightPanel)
+                applyOneShotState("재생성 완료")
             } catch (t: Throwable) {
                 _uiState.update { it.copy(reseedMessage = "재생성 실패: ${t.message ?: "unknown"}") }
             } finally {
                 _uiState.update { it.copy(isReseeding = false) }
             }
         }
+    }
+
+    private suspend fun bootstrapData() {
+        try {
+            repository.seedIfNeeded()
+            if (repository.getTableCount() == 0) {
+                repository.forceReseedDemoData()
+            }
+            applyOneShotState("초기 로드 완료")
+        } catch (t: Throwable) {
+            _uiState.update { it.copy(reseedMessage = "초기 로드 실패: ${t.message ?: "unknown"}") }
+        }
+    }
+
+    private suspend fun applyOneShotState(prefix: String) {
+        val areas = repository.getAreasOnce()
+        val selectedArea = repository.findFirstAreaIdWithTables()
+        val tables = selectedArea?.let { repository.getTablesOnce(it) }.orEmpty()
+        val selectedTable = tables.firstOrNull()?.tableId
+        val areaCount = repository.getAreaCount()
+        val tableCount = repository.getTableCount()
+        _uiState.update {
+            it.copy(
+                areas = areas,
+                selectedAreaId = selectedArea,
+                tables = tables,
+                selectedTableId = selectedTable,
+                reseedMessage = "${prefix}: 구역 ${areaCount}개 / 테이블 ${tableCount}개"
+            )
+        }
+        selectedTable?.let(::observeRightPanel)
     }
 
     private fun observeTables(areaId: Long) {
