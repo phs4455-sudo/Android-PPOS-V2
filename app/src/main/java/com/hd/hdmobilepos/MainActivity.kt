@@ -114,7 +114,8 @@ data class MainUiState(
     val selectedAreaId: Long? = null,
     val tables: List<TableSummary> = emptyList(),
     val selectedTableId: Long? = null,
-    val rightPanel: RightOrderPanelUi? = null
+    val rightPanel: RightOrderPanelUi? = null,
+    val isReseeding: Boolean = false
 )
 
 class MainViewModel(private val repository: PosRepository) : ViewModel() {
@@ -153,7 +154,12 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
     fun reseedDemoData() {
         viewModelScope.launch {
-            repository.forceReseedDemoData()
+            _uiState.update { it.copy(isReseeding = true) }
+            try {
+                repository.forceReseedDemoData()
+            } finally {
+                _uiState.update { it.copy(isReseeding = false) }
+            }
         }
     }
 
@@ -262,59 +268,63 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             )
                         }
                     }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("표시할 구역/테이블이 없습니다")
-                        OutlinedButton(onClick = { vm.reseedDemoData() }) {
-                            Text("샘플데이터 재생성")
-                        }
-                    }
                 }
 
-                if (uiState.tables.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("테이블 데이터가 없습니다. 샘플데이터 재생성을 눌러주세요.")
-                    }
-                }
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    gridItems(uiState.tables) { table ->
-                        val selected = table.tableId == selectedTable?.tableId
-                        Card(
+                    OutlinedButton(onClick = { vm.reseedDemoData() }, enabled = !uiState.isReseeding) {
+                        Text(if (uiState.isReseeding) "재생성 중..." else "샘플데이터 재생성")
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    if (uiState.tables.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("테이블 데이터가 없습니다. 상단 버튼으로 재생성 해주세요.")
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(4),
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .border(
-                                    width = if (selected) 2.dp else 1.dp,
-                                    color = if (selected) Color(0xFF005645) else Color(0xFFDDDDDD),
-                                    shape = MaterialTheme.shapes.medium
-                                )
-                                .clickable { vm.selectTable(table.tableId) }
+                                .fillMaxSize()
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(table.tableName, fontWeight = FontWeight.Bold)
-                                Text("${table.totalAmount}원", fontWeight = FontWeight.SemiBold)
-                                Text("${formatElapsed(table.createdAt)} · ${table.capacity}명")
-                                Text(table.status, color = Color.Gray)
+                            gridItems(uiState.tables) { table ->
+                                val selected = table.tableId == selectedTable?.tableId
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                        .border(
+                                            width = if (selected) 2.dp else 1.dp,
+                                            color = if (selected) Color(0xFF005645) else Color(0xFFDDDDDD),
+                                            shape = MaterialTheme.shapes.medium
+                                        )
+                                        .clickable { vm.selectTable(table.tableId) }
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(table.tableName, fontWeight = FontWeight.Bold)
+                                        Text("${table.totalAmount}원", fontWeight = FontWeight.SemiBold)
+                                        Text("${formatElapsed(table.createdAt)} · ${table.capacity}명")
+                                        Text(table.status, color = Color.Gray)
+                                    }
+                                }
                             }
                         }
                     }
