@@ -120,6 +120,7 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
     private var tableObserverJob: Job? = null
     private var rightPanelObserverJob: Job? = null
+    private var selectedTableItemsJob: Job? = null
 
     init {
         viewModelScope.launch {
