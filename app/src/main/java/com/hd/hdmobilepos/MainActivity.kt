@@ -115,7 +115,8 @@ data class MainUiState(
     val tables: List<TableSummary> = emptyList(),
     val selectedTableId: Long? = null,
     val rightPanel: RightOrderPanelUi? = null,
-    val isReseeding: Boolean = false
+    val isReseeding: Boolean = false,
+    val reseedMessage: String? = null
 )
 
 class MainViewModel(private val repository: PosRepository) : ViewModel() {
@@ -128,6 +129,9 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
     init {
         viewModelScope.launch {
             repository.seedIfNeeded()
+            if (repository.getTableCount() == 0) {
+                repository.forceReseedDemoData()
+            }
             repository.observeAreas().collectLatest { areas ->
                 val selectedArea = _uiState.value.selectedAreaId ?: areas.firstOrNull()?.id
                 _uiState.update { it.copy(areas = areas, selectedAreaId = selectedArea) }
@@ -154,22 +158,27 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
     fun reseedDemoData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isReseeding = true) }
+            _uiState.update { it.copy(isReseeding = true, reseedMessage = null) }
             try {
                 repository.forceReseedDemoData()
                 val areas = repository.getAreasOnce()
                 val selectedArea = areas.firstOrNull()?.id
                 val tables = selectedArea?.let { repository.getTablesOnce(it) }.orEmpty()
                 val selectedTable = tables.firstOrNull()?.tableId
+                val areaCount = repository.getAreaCount()
+                val tableCount = repository.getTableCount()
                 _uiState.update {
                     it.copy(
                         areas = areas,
                         selectedAreaId = selectedArea,
                         tables = tables,
-                        selectedTableId = selectedTable
+                        selectedTableId = selectedTable,
+                        reseedMessage = "재생성 완료: 구역 ${areaCount}개 / 테이블 ${tableCount}개"
                     )
                 }
                 selectedTable?.let(::observeRightPanel)
+            } catch (t: Throwable) {
+                _uiState.update { it.copy(reseedMessage = "재생성 실패: ${t.message ?: "unknown"}") }
             } finally {
                 _uiState.update { it.copy(isReseeding = false) }
             }
@@ -292,6 +301,13 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     OutlinedButton(onClick = { vm.reseedDemoData() }, enabled = !uiState.isReseeding) {
                         Text(if (uiState.isReseeding) "재생성 중..." else "샘플데이터 재생성")
                     }
+                }
+                uiState.reseedMessage?.let { msg ->
+                    Text(
+                        text = msg,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = Color(0xFF005645)
+                    )
                 }
 
                 Box(
