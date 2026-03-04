@@ -18,9 +18,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -210,7 +211,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(uiState.tables) { table ->
+                    gridItems(uiState.tables) { table ->
                         val selected = table.tableId == selectedTable?.tableId
                         Card(
                             modifier = Modifier
@@ -356,7 +357,7 @@ fun FoodCourtScreen(navController: NavHostController) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(menuNames) { menuName ->
+                    gridItems(menuNames) { menuName ->
                         Card(modifier = Modifier.fillMaxWidth().height(92.dp)) {
                             Column(
                                 modifier = Modifier.fillMaxSize().padding(10.dp),
