@@ -48,6 +48,11 @@ class PosRepository(private val dao: PosDao) {
         dao.mergeTables(fromTableId = fromTableId, toTableId = toTableId)
     }
 
+    suspend fun forceReseedDemoData() {
+        dao.resetAllData()
+        seedIfNeeded()
+    }
+
     suspend fun seedIfNeeded() {
         dao.upsertArea(Area(id = 1, name = "식당가 1층 홀", sortOrder = 1))
         dao.upsertArea(Area(id = 2, name = "식당가 1층 룸", sortOrder = 2))

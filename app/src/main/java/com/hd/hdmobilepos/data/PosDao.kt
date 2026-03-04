@@ -126,6 +126,19 @@ interface PosDao {
     @Query("UPDATE tables SET status = :status WHERE id = :tableId")
     suspend fun updateTableStatus(tableId: Long, status: String)
 
+
+    @Query("DELETE FROM order_items")
+    suspend fun clearOrderItems()
+
+    @Query("DELETE FROM orders")
+    suspend fun clearOrders()
+
+    @Query("DELETE FROM tables")
+    suspend fun clearTables()
+
+    @Query("DELETE FROM areas")
+    suspend fun clearAreas()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertArea(area: Area)
 
@@ -137,6 +150,15 @@ interface PosDao {
 
     @Insert
     suspend fun insertOrderItems(items: List<OrderItem>)
+
+
+    @Transaction
+    suspend fun resetAllData() {
+        clearOrderItems()
+        clearOrders()
+        clearTables()
+        clearAreas()
+    }
 
     @Transaction
     suspend fun mergeTables(fromTableId: Long, toTableId: Long) {

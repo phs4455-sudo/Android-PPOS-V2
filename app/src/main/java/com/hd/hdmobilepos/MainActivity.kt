@@ -153,7 +153,7 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
     fun reseedDemoData() {
         viewModelScope.launch {
-            repository.seedIfNeeded()
+            repository.forceReseedDemoData()
         }
     }
 
