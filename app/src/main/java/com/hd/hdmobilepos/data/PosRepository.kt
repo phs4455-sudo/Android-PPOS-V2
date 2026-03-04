@@ -49,14 +49,27 @@ class PosRepository(private val dao: PosDao) {
     }
 
     suspend fun seedIfNeeded() {
-        if (dao.getAreaCount() > 0) return
-
         dao.upsertArea(Area(id = 1, name = "식당가 1층 홀", sortOrder = 1))
-        dao.upsertArea(Area(id = 2, name = "룸", sortOrder = 2))
+        dao.upsertArea(Area(id = 2, name = "식당가 1층 룸", sortOrder = 2))
+        dao.upsertArea(Area(id = 3, name = "식당가 2층 홀", sortOrder = 3))
+        dao.upsertArea(Area(id = 4, name = "야외 테라스", sortOrder = 4))
 
-        dao.upsertTable(DiningTable(id = 1, areaId = 1, name = "T1", status = "OCCUPIED", capacity = 4))
-        dao.upsertTable(DiningTable(id = 2, areaId = 1, name = "T2", status = "EMPTY", capacity = 4))
-        dao.upsertTable(DiningTable(id = 3, areaId = 2, name = "R1", status = "OCCUPIED", capacity = 6))
+        // 테스트 가능한 테이블 수를 충분히 확보
+        val defaultTables = listOf(
+            DiningTable(id = 1, areaId = 1, name = "T-1", status = "OCCUPIED", capacity = 4),
+            DiningTable(id = 2, areaId = 1, name = "T-2", status = "EMPTY", capacity = 4),
+            DiningTable(id = 3, areaId = 1, name = "T-3", status = "EMPTY", capacity = 4),
+            DiningTable(id = 4, areaId = 1, name = "T-4", status = "OCCUPIED", capacity = 2),
+            DiningTable(id = 5, areaId = 2, name = "R-1", status = "EMPTY", capacity = 6),
+            DiningTable(id = 6, areaId = 2, name = "R-2", status = "OCCUPIED", capacity = 8),
+            DiningTable(id = 7, areaId = 3, name = "2F-1", status = "EMPTY", capacity = 4),
+            DiningTable(id = 8, areaId = 3, name = "2F-2", status = "EMPTY", capacity = 4),
+            DiningTable(id = 9, areaId = 4, name = "TERR-1", status = "EMPTY", capacity = 4),
+            DiningTable(id = 10, areaId = 4, name = "TERR-2", status = "DISABLED", capacity = 4)
+        )
+        defaultTables.forEach { dao.upsertTable(it) }
+
+        if (dao.getOrderCount() > 0) return
 
         val firstOrderId = dao.insertOrder(
             Order(
@@ -75,8 +88,8 @@ class PosRepository(private val dao: PosDao) {
 
         val secondOrderId = dao.insertOrder(
             Order(
-                tableId = 3,
-                status = "CREATED",
+                tableId = 4,
+                status = "SENT",
                 totalAmount = 18000,
                 createdAt = System.currentTimeMillis() - (12 * 60 * 1000)
             )
@@ -86,5 +99,21 @@ class PosRepository(private val dao: PosDao) {
                 OrderItem(orderId = secondOrderId, nameSnapshot = "돈까스", priceSnapshot = 9000, qty = 2)
             )
         )
+
+        val thirdOrderId = dao.insertOrder(
+            Order(
+                tableId = 6,
+                status = "CREATED",
+                totalAmount = 54000,
+                createdAt = System.currentTimeMillis() - (22 * 60 * 1000)
+            )
+        )
+        dao.insertOrderItems(
+            listOf(
+                OrderItem(orderId = thirdOrderId, nameSnapshot = "한우 안심 스테이크", priceSnapshot = 45000, qty = 1),
+                OrderItem(orderId = thirdOrderId, nameSnapshot = "콜라", priceSnapshot = 3000, qty = 3)
+            )
+        )
     }
+
 }

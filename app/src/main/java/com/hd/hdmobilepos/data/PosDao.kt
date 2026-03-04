@@ -94,6 +94,12 @@ interface PosDao {
     @Query("SELECT COUNT(*) FROM areas")
     suspend fun getAreaCount(): Int
 
+    @Query("SELECT COUNT(*) FROM tables")
+    suspend fun getTableCount(): Int
+
+    @Query("SELECT COUNT(*) FROM orders")
+    suspend fun getOrderCount(): Int
+
     @Query(
         """
         SELECT *
