@@ -1,6 +1,7 @@
 package com.hd.hdmobilepos.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class PosRepository(private val dao: PosDao) {
     fun observeAreas(): Flow<List<Area>> = dao.observeAreas()
@@ -8,6 +9,38 @@ class PosRepository(private val dao: PosDao) {
     fun observeTables(areaId: Long): Flow<List<TableSummary>> = dao.observeTableSummaries(areaId)
 
     fun observeCurrentOrderItems(tableId: Long): Flow<List<OrderItemRow>> = dao.observeCurrentOrderItems(tableId)
+
+    fun observeActiveOrderDetails(tableId: Long): Flow<ActiveOrderDetails?> {
+        return dao.observeActiveOrderItemFlats(tableId).map { flats ->
+            if (flats.isEmpty()) {
+                null
+            } else {
+                val first = flats.first()
+                val lines = flats.mapNotNull { flat ->
+                    val name = flat.nameSnapshot
+                    val price = flat.priceSnapshot
+                    val qty = flat.qty
+                    if (name == null || price == null || qty == null) {
+                        null
+                    } else {
+                        ActiveOrderLine(
+                            itemName = name,
+                            qty = qty,
+                            lineTotal = price * qty
+                        )
+                    }
+                }
+                ActiveOrderDetails(
+                    orderId = first.orderId,
+                    status = first.status,
+                    createdAt = first.createdAt,
+                    orderTotalAmount = first.orderTotalAmount,
+                    derivedTotalAmount = lines.sumOf { it.lineTotal },
+                    items = lines
+                )
+            }
+        }
+    }
 
     suspend fun getOrderItemsOnce(tableId: Long): List<OrderItemRow> = dao.getOrderItemsOnce(tableId)
 

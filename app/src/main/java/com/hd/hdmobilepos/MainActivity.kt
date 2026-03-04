@@ -51,9 +51,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
-import com.hd.hdmobilepos.data.AppDatabase
+import com.hd.hdmobilepos.data.ActiveOrderDetails
 import com.hd.hdmobilepos.data.Area
-import com.hd.hdmobilepos.data.OrderItemRow
+import com.hd.hdmobilepos.data.AppDatabase
 import com.hd.hdmobilepos.data.PosRepository
 import com.hd.hdmobilepos.data.TableSummary
 import com.hd.hdmobilepos.ui.theme.PPOSTheme
@@ -91,12 +91,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class RightPanelItemUi(
+    val itemName: String,
+    val qty: Int,
+    val lineTotal: Int
+)
+
+data class RightOrderPanelUi(
+    val orderStatus: String,
+    val elapsedLabel: String,
+    val items: List<RightPanelItemUi>,
+    val orderTotalAmount: Int,
+    val derivedTotalAmount: Int,
+    val isTotalMismatch: Boolean
+)
+
 data class MainUiState(
     val areas: List<Area> = emptyList(),
     val selectedAreaId: Long? = null,
     val tables: List<TableSummary> = emptyList(),
     val selectedTableId: Long? = null,
-    val selectedTableItems: List<OrderItemRow> = emptyList()
+    val rightPanel: RightOrderPanelUi? = null
 )
 
 class MainViewModel(private val repository: PosRepository) : ViewModel() {
@@ -104,6 +119,7 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private var tableObserverJob: Job? = null
+    private var rightPanelObserverJob: Job? = null
     private var selectedTableItemsJob: Job? = null
 
     init {
@@ -118,18 +134,19 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
     }
 
     fun selectArea(areaId: Long) {
-        _uiState.update { it.copy(selectedAreaId = areaId, selectedTableId = null, selectedTableItems = emptyList()) }
+        _uiState.update {
+            it.copy(
+                selectedAreaId = areaId,
+                selectedTableId = null,
+                rightPanel = null
+            )
+        }
         observeTables(areaId)
     }
 
     fun selectTable(tableId: Long) {
         _uiState.update { it.copy(selectedTableId = tableId) }
-        selectedTableItemsJob?.cancel()
-        selectedTableItemsJob = viewModelScope.launch {
-            repository.observeCurrentOrderItems(tableId).collectLatest { items ->
-                _uiState.update { state -> state.copy(selectedTableItems = items) }
-            }
-        }
+        observeRightPanel(tableId)
     }
 
     private fun observeTables(areaId: Long) {
@@ -139,10 +156,40 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
                 val selected = _uiState.value.selectedTableId?.takeIf { id -> tables.any { it.tableId == id } }
                     ?: tables.firstOrNull()?.tableId
                 _uiState.update { it.copy(tables = tables, selectedTableId = selected) }
-                selected?.let(::selectTable)
+                selected?.let(::observeRightPanel)
             }
         }
     }
+
+    private fun observeRightPanel(tableId: Long) {
+        rightPanelObserverJob?.cancel()
+        rightPanelObserverJob = viewModelScope.launch {
+            repository.observeActiveOrderDetails(tableId).collectLatest { activeOrder ->
+                _uiState.update { state ->
+                    state.copy(
+                        rightPanel = activeOrder?.toRightPanelUi()
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun ActiveOrderDetails.toRightPanelUi(): RightOrderPanelUi {
+    return RightOrderPanelUi(
+        orderStatus = status,
+        elapsedLabel = formatElapsed(createdAt),
+        items = items.map { line ->
+            RightPanelItemUi(
+                itemName = line.itemName,
+                qty = line.qty,
+                lineTotal = line.lineTotal
+            )
+        },
+        orderTotalAmount = orderTotalAmount,
+        derivedTotalAmount = derivedTotalAmount,
+        isTotalMismatch = orderTotalAmount != derivedTotalAmount
+    )
 }
 
 @Composable
@@ -190,7 +237,11 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
                 if (uiState.areas.isNotEmpty()) {
                     ScrollableTabRow(
                         selectedTabIndex = uiState.areas.indexOfFirst { it.id == uiState.selectedAreaId }.coerceAtLeast(0)
@@ -207,7 +258,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    modifier = Modifier.fillMaxSize().padding(20.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -225,7 +278,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                 .clickable { vm.selectTable(table.tableId) }
                         ) {
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(12.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -252,36 +307,68 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     }
                 } else {
                     Surface(color = Color(0xFF005645), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold)
                             Text(
-                                "${selectedTable.status} | ${formatElapsed(selectedTable.createdAt)} | ${selectedTable.capacity}명",
+                                "${selectedTable.status} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
                                 color = Color.White
                             )
                         }
                     }
+
                     Spacer(Modifier.height(12.dp))
-                    LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(uiState.selectedTableItems) { item ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(item.nameSnapshot)
-                                Text("${item.qty}")
+
+                    val panel = uiState.rightPanel
+                    if (panel == null) {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Text("활성 주문이 없습니다")
+                        }
+                    } else {
+                        Text("주문상태: ${panel.orderStatus}", color = Color.Gray)
+                        Spacer(Modifier.height(6.dp))
+
+                        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(panel.items) { item ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(item.itemName)
+                                    Text("${item.qty}")
+                                    Text("${item.lineTotal}원")
+                                }
+                                Divider()
                             }
-                            Divider()
+                        }
+
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("주문합계(계산)", color = Color.Gray)
+                            Text("${panel.derivedTotalAmount}원", fontWeight = FontWeight.Bold)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("주문합계(DB)", color = Color.Gray)
+                            Text("${panel.orderTotalAmount}원", color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
+                        }
+                        if (panel.isTotalMismatch) {
+                            Text("합계 불일치: 계산값과 DB 총액이 다릅니다", color = Color(0xFFD63B3B))
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("총 주문금액", color = Color.Gray)
-                        Text("${selectedTable.totalAmount}원", color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
-                    }
+
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { navController.navigate("food") }, modifier = Modifier.weight(1f)) { Text("주문") }
+                        OutlinedButton(onClick = { navController.navigate("food") }, modifier = Modifier.weight(1f)) {
+                            Text("주문")
+                        }
                         Button(
                             onClick = { /* TODO: 결제 처리 로직 연결 */ },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
-                        ) { Text("결제") }
+                        ) {
+                            Text("결제")
+                        }
                     }
                 }
             }
@@ -299,21 +386,34 @@ fun FoodCourtScreen(navController: NavHostController) {
         topBar = { PosTopBar() },
         bottomBar = {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("반품/환불") }
-                Button(onClick = {}, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))) {
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
+                ) {
                     Text("주문 보류")
                 }
-                Button(onClick = {}, modifier = Modifier.weight(1.6f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))) {
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1.6f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                ) {
                     Text("결제 진행")
                 }
             }
         }
     ) { paddingValues ->
         Row(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(10.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(
@@ -341,11 +441,22 @@ fun FoodCourtScreen(navController: NavHostController) {
                     }
                 }
                 Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("71,000원", style = MaterialTheme.typography.headlineMedium, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
-                OutlinedButton(onClick = { navController.popBackStack() }, modifier = Modifier.fillMaxWidth()) { Text("레스토랑 화면으로") }
+                Text(
+                    "71,000원",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color(0xFFD63B3B),
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedButton(onClick = { navController.popBackStack() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("레스토랑 화면으로")
+                }
             }
 
-            Column(modifier = Modifier.weight(2f).fillMaxHeight()) {
+            Column(
+                modifier = Modifier
+                    .weight(2f)
+                    .fillMaxHeight()
+            ) {
                 ScrollableTabRow(selectedTabIndex = 0) {
                     categories.forEachIndexed { index, category ->
                         Tab(selected = index == 0, onClick = {}, text = { Text(category) })
@@ -353,14 +464,18 @@ fun FoodCourtScreen(navController: NavHostController) {
                 }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    modifier = Modifier.fillMaxSize().padding(top = 12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     gridItems(menuNames) { menuName ->
                         Card(modifier = Modifier.fillMaxWidth().height(92.dp)) {
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(10.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(10.dp),
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(menuName, fontWeight = FontWeight.SemiBold)

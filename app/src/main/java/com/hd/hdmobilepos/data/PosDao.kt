@@ -53,6 +53,29 @@ interface PosDao {
 
     @Query(
         """
+        SELECT o.id AS orderId,
+               o.status AS status,
+               o.totalAmount AS orderTotalAmount,
+               o.createdAt AS createdAt,
+               oi.nameSnapshot AS nameSnapshot,
+               oi.priceSnapshot AS priceSnapshot,
+               oi.qty AS qty
+        FROM orders o
+        LEFT JOIN order_items oi ON oi.orderId = o.id
+        WHERE o.id = (
+            SELECT o2.id
+            FROM orders o2
+            WHERE o2.tableId = :tableId AND o2.status IN ('CREATED', 'SENT')
+            ORDER BY o2.createdAt DESC, o2.id DESC
+            LIMIT 1
+        )
+        ORDER BY oi.id
+        """
+    )
+    fun observeActiveOrderItemFlats(tableId: Long): Flow<List<ActiveOrderItemFlat>>
+
+    @Query(
+        """
         SELECT oi.nameSnapshot, oi.priceSnapshot, oi.qty
         FROM order_items oi
         INNER JOIN orders o ON o.id = oi.orderId

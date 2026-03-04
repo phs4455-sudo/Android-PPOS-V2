@@ -86,3 +86,28 @@ data class OrderItemRow(
     val priceSnapshot: Int,
     val qty: Int
 )
+
+data class ActiveOrderItemFlat(
+    val orderId: Long,
+    val status: String,
+    val orderTotalAmount: Int,
+    val createdAt: Long,
+    val nameSnapshot: String?,
+    val priceSnapshot: Int?,
+    val qty: Int?
+)
+
+data class ActiveOrderLine(
+    val itemName: String,
+    val qty: Int,
+    val lineTotal: Int
+)
+
+data class ActiveOrderDetails(
+    val orderId: Long,
+    val status: String,
+    val createdAt: Long,
+    val orderTotalAmount: Int,
+    val derivedTotalAmount: Int,
+    val items: List<ActiveOrderLine>
+)
