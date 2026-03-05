@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,13 +43,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -70,6 +82,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -308,6 +321,45 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
         _uiState.update { it.copy(snackbarMessage = null) }
     }
 
+    fun onTableDropped(sourceTableId: Long, targetTableId: Long) {
+        if (sourceTableId == targetTableId) return
+        val targetTable = _uiState.value.tables.firstOrNull { it.tableId == targetTableId } ?: return
+        if (targetTable.status == "DISABLED") {
+            pushSnackbar("사용불가 테이블은 대상이 될 수 없습니다")
+            return
+        }
+
+        viewModelScope.launch {
+            if (!repository.hasActiveOrder(sourceTableId)) {
+                pushSnackbar("원본 테이블에 활성 주문이 없습니다")
+                return@launch
+            }
+            val targetHasActiveOrder = repository.hasActiveOrder(targetTableId)
+            if (targetHasActiveOrder) {
+                repository.mergeTables(sourceTableId, targetTableId)
+                pushSnackbar("합석 처리되었습니다")
+            } else {
+                val moved = repository.moveActiveOrder(sourceTableId, targetTableId)
+                if (!moved) {
+                    pushSnackbar("이동할 활성 주문이 없습니다")
+                    return@launch
+                }
+                pushSnackbar("이동 처리되었습니다")
+            }
+
+            _uiState.update {
+                it.copy(
+                    selectedTableId = targetTableId,
+                    selectedSourceTableId = targetTableId,
+                    selectedTargetTableId = null,
+                    uiMode = UiMode.NORMAL,
+                    pendingAction = null
+                )
+            }
+            observeRightPanel(targetTableId)
+        }
+    }
+
     fun addMenuToSelectedTable(menuName: String, price: Int) {
         val tableId = _uiState.value.selectedTableId ?: return
         viewModelScope.launch {
@@ -456,6 +508,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
     val uiState by vm.uiState.collectAsState()
     val selectedTable = uiState.tables.firstOrNull { it.tableId == uiState.selectedTableId }
     val snackbarHostState = remember { SnackbarHostState() }
+    val tableBounds = remember { mutableStateMapOf<Long, Rect>() }
+    var draggingTableId by remember { mutableStateOf<Long?>(null) }
+    var draggingOffset by remember { mutableStateOf(Offset.Zero) }
 
     LaunchedEffect(uiState.snackbarMessage) {
         val msg = uiState.snackbarMessage ?: return@LaunchedEffect
@@ -531,6 +586,17 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(150.dp)
+                                        .onGloballyPositioned { coordinates ->
+                                            tableBounds[table.tableId] = coordinates.boundsInWindow()
+                                        }
+                                        .offset {
+                                            if (draggingTableId == table.tableId) {
+                                                IntOffset(draggingOffset.x.roundToInt(), draggingOffset.y.roundToInt())
+                                            } else {
+                                                IntOffset.Zero
+                                            }
+                                        }
+                                        .zIndex(if (draggingTableId == table.tableId) 10f else 0f)
                                         .border(
                                             width = if (selected || isSelectedTarget) 2.dp else 1.dp,
                                             color = when {
@@ -541,6 +607,39 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                             },
                                             shape = MaterialTheme.shapes.medium
                                         )
+                                        .pointerInput(table.tableId) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    draggingTableId = table.tableId
+                                                    draggingOffset = Offset.Zero
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    if (draggingTableId == table.tableId) {
+                                                        draggingOffset += dragAmount
+                                                    }
+                                                },
+                                                onDragEnd = {
+                                                    val sourceId = draggingTableId
+                                                    val sourceBounds = sourceId?.let { tableBounds[it] }
+                                                    val dropPoint = sourceBounds?.center?.plus(draggingOffset)
+                                                    if (sourceId != null && dropPoint != null) {
+                                                        val targetId = tableBounds.entries
+                                                            .firstOrNull { (id, rect) -> id != sourceId && rect.contains(dropPoint) }
+                                                            ?.key
+                                                        if (targetId != null) {
+                                                            vm.onTableDropped(sourceId, targetId)
+                                                        }
+                                                    }
+                                                    draggingTableId = null
+                                                    draggingOffset = Offset.Zero
+                                                },
+                                                onDragCancel = {
+                                                    draggingTableId = null
+                                                    draggingOffset = Offset.Zero
+                                                }
+                                            )
+                                        }
                                         .clickable { vm.onTableTileClicked(table.tableId, table.status) }
                                 ) {
                                     Column(
