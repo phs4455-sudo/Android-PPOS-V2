@@ -33,14 +33,17 @@ class PosRepository(private val dao: PosDao) {
             } else {
                 val first = flats.first()
                 val lines = flats.mapNotNull { flat ->
+                    val orderItemId = flat.orderItemId
                     val name = flat.nameSnapshot
                     val price = flat.priceSnapshot
                     val qty = flat.qty
-                    if (name == null || price == null || qty == null) {
+                    if (orderItemId == null || name == null || price == null || qty == null) {
                         null
                     } else {
                         ActiveOrderLine(
+                            orderItemId = orderItemId,
                             itemName = name,
+                            priceSnapshot = price,
                             qty = qty,
                             lineTotal = price * qty
                         )
@@ -74,6 +77,14 @@ class PosRepository(private val dao: PosDao) {
 
     suspend fun addMenuToTable(tableId: Long, menuName: String, price: Int) {
         dao.addMenuToTable(tableId = tableId, itemName = menuName, price = price)
+    }
+
+    suspend fun changeOrderItemQty(orderId: Long, orderItemId: Long, delta: Int) {
+        dao.changeOrderItemQty(orderId = orderId, orderItemId = orderItemId, delta = delta)
+    }
+
+    suspend fun changeOrderItemUnitPrice(orderId: Long, orderItemId: Long, newPrice: Int) {
+        dao.changeOrderItemUnitPrice(orderId = orderId, orderItemId = orderItemId, newPrice = newPrice)
     }
 
     suspend fun forceReseedDemoData() {

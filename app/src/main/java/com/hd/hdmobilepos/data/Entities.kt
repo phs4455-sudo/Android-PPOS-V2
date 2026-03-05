@@ -92,13 +92,16 @@ data class ActiveOrderItemFlat(
     val status: String,
     val orderTotalAmount: Int,
     val createdAt: Long,
+    val orderItemId: Long?,
     val nameSnapshot: String?,
     val priceSnapshot: Int?,
     val qty: Int?
 )
 
 data class ActiveOrderLine(
+    val orderItemId: Long,
     val itemName: String,
+    val priceSnapshot: Int,
     val qty: Int,
     val lineTotal: Int
 )

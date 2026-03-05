@@ -83,6 +83,7 @@ interface PosDao {
                o.status AS status,
                o.totalAmount AS orderTotalAmount,
                o.createdAt AS createdAt,
+               oi.id AS orderItemId,
                oi.nameSnapshot AS nameSnapshot,
                oi.priceSnapshot AS priceSnapshot,
                oi.qty AS qty
@@ -188,6 +189,12 @@ interface PosDao {
 
     @Query("SELECT COALESCE(SUM(priceSnapshot * qty), 0) FROM order_items WHERE orderId = :orderId")
     suspend fun getOrderTotalFromItems(orderId: Long): Int
+
+    @Query("SELECT * FROM order_items WHERE id = :orderItemId LIMIT 1")
+    suspend fun getOrderItemById(orderItemId: Long): OrderItem?
+
+    @Query("DELETE FROM order_items WHERE id = :orderItemId")
+    suspend fun deleteOrderItemById(orderItemId: Long)
 
 
     @Query("DELETE FROM order_items")
@@ -322,5 +329,27 @@ interface PosDao {
         updateOrderTotal(activeOrderId, total)
         val currentStatus = getTableStatus(tableId)
         updateTableStatus(tableId, if (currentStatus == "MERGED") "MERGED" else "OCCUPIED")
+    }
+
+    @Transaction
+    suspend fun changeOrderItemQty(orderId: Long, orderItemId: Long, delta: Int) {
+        val item = getOrderItemById(orderItemId) ?: return
+        val updatedQty = item.qty + delta
+        if (updatedQty <= 0) {
+            deleteOrderItemById(orderItemId)
+        } else {
+            updateOrderItem(item.copy(qty = updatedQty))
+        }
+        val total = getOrderTotalFromItems(orderId)
+        updateOrderTotal(orderId, total)
+    }
+
+    @Transaction
+    suspend fun changeOrderItemUnitPrice(orderId: Long, orderItemId: Long, newPrice: Int) {
+        if (newPrice <= 0) return
+        val item = getOrderItemById(orderItemId) ?: return
+        updateOrderItem(item.copy(priceSnapshot = newPrice))
+        val total = getOrderTotalFromItems(orderId)
+        updateOrderTotal(orderId, total)
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
@@ -90,6 +91,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -122,12 +124,15 @@ class MainActivity : ComponentActivity() {
 }
 
 data class RightPanelItemUi(
+    val orderItemId: Long,
     val itemName: String,
+    val priceSnapshot: Int,
     val qty: Int,
     val lineTotal: Int
 )
 
 data class RightOrderPanelUi(
+    val orderId: Long,
     val orderStatus: String,
     val elapsedLabel: String,
     val items: List<RightPanelItemUi>,
@@ -384,6 +389,38 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
         }
     }
 
+    fun increaseOrderItemQty(orderItemId: Long) {
+        val orderId = _uiState.value.rightPanel?.orderId ?: return
+        viewModelScope.launch {
+            repository.changeOrderItemQty(orderId = orderId, orderItemId = orderItemId, delta = 1)
+        }
+    }
+
+    fun decreaseOrderItemQty(orderItemId: Long) {
+        val panel = _uiState.value.rightPanel ?: return
+        val target = panel.items.firstOrNull { it.orderItemId == orderItemId } ?: return
+        if (target.qty <= 1) {
+            pushSnackbar("수량은 1 이상이어야 합니다")
+            return
+        }
+        val orderId = panel.orderId
+        viewModelScope.launch {
+            repository.changeOrderItemQty(orderId = orderId, orderItemId = orderItemId, delta = -1)
+        }
+    }
+
+    fun changeOrderItemUnitPrice(orderItemId: Long, newPrice: Int) {
+        if (newPrice <= 0) {
+            pushSnackbar("금액은 1원 이상이어야 합니다")
+            return
+        }
+        val panel = _uiState.value.rightPanel ?: return
+        val orderId = panel.orderId
+        viewModelScope.launch {
+            repository.changeOrderItemUnitPrice(orderId = orderId, orderItemId = orderItemId, newPrice = newPrice)
+        }
+    }
+
     private fun pushSnackbar(message: String) {
         _uiState.update { it.copy(snackbarMessage = message) }
     }
@@ -468,11 +505,14 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
 private fun ActiveOrderDetails.toRightPanelUi(): RightOrderPanelUi {
     return RightOrderPanelUi(
+        orderId = orderId,
         orderStatus = status,
         elapsedLabel = formatElapsed(createdAt),
         items = items.map { line ->
             RightPanelItemUi(
+                orderItemId = line.orderItemId,
                 itemName = line.itemName,
+                priceSnapshot = line.priceSnapshot,
                 qty = line.qty,
                 lineTotal = line.lineTotal
             )
@@ -709,9 +749,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         verticalArrangement = Arrangement.Center,
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text(table.tableName, fontWeight = FontWeight.Bold)
-                                        Text("${table.totalAmount}원", fontWeight = FontWeight.SemiBold)
-                                        Text("${formatElapsed(table.createdAt)} · ${table.capacity}명")
+                                        Text(table.tableName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
+                                        Text("${formatAmount(table.totalAmount)}원", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                                        Text("${formatElapsed(table.createdAt)} · ${table.capacity}명", style = MaterialTheme.typography.bodySmall)
                                         Text(table.status, color = if (contentColor == Color.White) Color.White else Color.Gray)
                                         if (table.status == "MERGED") {
                                             Text("합석됨", color = Color.White, fontWeight = FontWeight.Bold)
@@ -741,10 +781,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
                             val statusLabel = if (selectedTable.status == "MERGED") "합석됨" else selectedTable.status
                             Text(
-                                "${statusLabel} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
+                                "${statusLabel} | 식사중 ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
                                 color = Color.White
                             )
                         }
@@ -837,6 +877,8 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
 @Composable
 fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId: Long?) {
     val uiState by vm.uiState.collectAsState()
+    var priceEditItem by remember { mutableStateOf<RightPanelItemUi?>(null) }
+    var priceInput by remember { mutableStateOf("") }
 
     LaunchedEffect(tableId) {
         tableId?.let(vm::selectTable)
@@ -904,28 +946,50 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             ) {
                 Text(
                     selectedTable?.tableName ?: "선택된 테이블 없음",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("상품명", color = Color.Gray)
-                    Text("수량", color = Color.Gray)
-                    Text("금액", color = Color.Gray)
+                    Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(panelItems) { item ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(item.itemName)
-                            Text(item.qty.toString())
-                            Text("${item.lineTotal}원")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(item.itemName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(onClick = { vm.decreaseOrderItemQty(item.orderItemId) }) { Text("-") }
+                                Text("${item.qty}", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
+                                OutlinedButton(onClick = { vm.increaseOrderItemQty(item.orderItemId) }) { Text("+") }
+                            }
+                            Text(
+                                text = "${formatAmount(item.lineTotal)}원",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        priceEditItem = item
+                                        priceInput = item.priceSnapshot.toString()
+                                    },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFF005645)
+                            )
                         }
                     }
                 }
                 Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "${totalAmount}원",
+                    "${formatAmount(totalAmount)}원",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color(0xFFD63B3B),
                     fontWeight = FontWeight.Bold
@@ -945,7 +1009,13 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         Tab(
                             selected = index == selectedCategoryIndex,
                             onClick = { selectedCategoryIndex = index },
-                            text = { Text(category) }
+                            text = {
+                                Text(
+                                    category,
+                                    style = if (index == selectedCategoryIndex) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                    color = if (index == selectedCategoryIndex) Color(0xFF005645) else Color(0xFF444444)
+                                )
+                            }
                         )
                     }
                 }
@@ -971,13 +1041,42 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(menuName, fontWeight = FontWeight.SemiBold)
-                                Text("8,000", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold)
+                                Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    priceEditItem?.let { target ->
+        AlertDialog(
+            onDismissRequest = { priceEditItem = null },
+            title = { Text("금액 변경") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(target.itemName)
+                    OutlinedTextField(
+                        value = priceInput,
+                        onValueChange = { input -> priceInput = input.filter { it.isDigit() } },
+                        label = { Text("단가") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val newPrice = priceInput.toIntOrNull()
+                    if (newPrice != null) {
+                        vm.changeOrderItemUnitPrice(target.orderItemId, newPrice)
+                        priceEditItem = null
+                    }
+                }) { Text("적용") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { priceEditItem = null }) { Text("취소") }
+            }
+        )
     }
 }
 
@@ -986,3 +1085,5 @@ private fun formatElapsed(createdAt: Long?): String {
     val elapsedMillis = (System.currentTimeMillis() - createdAt).coerceAtLeast(0)
     return "${TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)}분"
 }
+
+private fun formatAmount(value: Int): String = String.format(Locale.KOREA, "%,d", value)
