@@ -26,10 +26,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -113,11 +116,33 @@ data class RightOrderPanelUi(
     val isTotalMismatch: Boolean
 )
 
+enum class UiMode {
+    NORMAL,
+    SELECT_TARGET_FOR_MOVE,
+    SELECT_TARGET_FOR_MERGE
+}
+
+enum class TableActionType {
+    MOVE,
+    MERGE
+}
+
+data class PendingTableAction(
+    val type: TableActionType,
+    val sourceTableId: Long,
+    val targetTableId: Long
+)
+
 data class MainUiState(
     val areas: List<Area> = emptyList(),
     val selectedAreaId: Long? = null,
     val tables: List<TableSummary> = emptyList(),
     val selectedTableId: Long? = null,
+    val selectedSourceTableId: Long? = null,
+    val selectedTargetTableId: Long? = null,
+    val uiMode: UiMode = UiMode.NORMAL,
+    val pendingAction: PendingTableAction? = null,
+    val snackbarMessage: String? = null,
     val rightPanel: RightOrderPanelUi? = null,
     val isReseeding: Boolean = false,
     val reseedMessage: String? = null
@@ -146,6 +171,10 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             it.copy(
                 selectedAreaId = areaId,
                 selectedTableId = null,
+                selectedSourceTableId = null,
+                selectedTargetTableId = null,
+                uiMode = UiMode.NORMAL,
+                pendingAction = null,
                 rightPanel = null
             )
         }
@@ -153,8 +182,130 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
     }
 
     fun selectTable(tableId: Long) {
-        _uiState.update { it.copy(selectedTableId = tableId) }
+        _uiState.update {
+            it.copy(
+                selectedTableId = tableId,
+                selectedSourceTableId = tableId,
+                selectedTargetTableId = null,
+                uiMode = UiMode.NORMAL,
+                pendingAction = null
+            )
+        }
         observeRightPanel(tableId)
+    }
+
+    fun startMoveMode() {
+        val sourceId = _uiState.value.selectedTableId
+        if (sourceId == null) {
+            pushSnackbar("먼저 원본 테이블을 선택하세요")
+            return
+        }
+        if (_uiState.value.rightPanel == null) {
+            pushSnackbar("이동할 활성 주문이 없습니다")
+            return
+        }
+        _uiState.update {
+            it.copy(
+                uiMode = UiMode.SELECT_TARGET_FOR_MOVE,
+                selectedSourceTableId = sourceId,
+                selectedTargetTableId = null,
+                pendingAction = null
+            )
+        }
+    }
+
+    fun startMergeMode() {
+        val sourceId = _uiState.value.selectedTableId
+        if (sourceId == null) {
+            pushSnackbar("먼저 원본 테이블을 선택하세요")
+            return
+        }
+        if (_uiState.value.rightPanel == null) {
+            pushSnackbar("합석할 활성 주문이 없습니다")
+            return
+        }
+        _uiState.update {
+            it.copy(
+                uiMode = UiMode.SELECT_TARGET_FOR_MERGE,
+                selectedSourceTableId = sourceId,
+                selectedTargetTableId = null,
+                pendingAction = null
+            )
+        }
+    }
+
+    fun onTableTileClicked(tableId: Long, status: String) {
+        val state = _uiState.value
+        if (state.uiMode == UiMode.NORMAL) {
+            selectTable(tableId)
+            return
+        }
+
+        val sourceId = state.selectedSourceTableId
+        if (sourceId == null) {
+            _uiState.update { it.copy(uiMode = UiMode.NORMAL) }
+            return
+        }
+        if (status == "DISABLED") {
+            pushSnackbar("사용불가 테이블은 선택할 수 없습니다")
+            return
+        }
+        if (sourceId == tableId) {
+            pushSnackbar("다른 대상 테이블을 선택하세요")
+            return
+        }
+
+        viewModelScope.launch {
+            if (state.uiMode == UiMode.SELECT_TARGET_FOR_MERGE && !repository.hasActiveOrder(tableId)) {
+                pushSnackbar("합석은 양쪽 테이블에 활성 주문이 있어야 합니다")
+                return@launch
+            }
+            val type = if (state.uiMode == UiMode.SELECT_TARGET_FOR_MOVE) TableActionType.MOVE else TableActionType.MERGE
+            _uiState.update {
+                it.copy(
+                    selectedTargetTableId = tableId,
+                    pendingAction = PendingTableAction(
+                        type = type,
+                        sourceTableId = sourceId,
+                        targetTableId = tableId
+                    )
+                )
+            }
+        }
+    }
+
+    fun dismissPendingAction() {
+        _uiState.update { it.copy(pendingAction = null, selectedTargetTableId = null, uiMode = UiMode.NORMAL) }
+    }
+
+    fun confirmPendingAction() {
+        val action = _uiState.value.pendingAction ?: return
+        viewModelScope.launch {
+            when (action.type) {
+                TableActionType.MOVE -> {
+                    val moved = repository.moveActiveOrder(action.sourceTableId, action.targetTableId)
+                    if (!moved) pushSnackbar("이동할 활성 주문이 없습니다")
+                }
+
+                TableActionType.MERGE -> {
+                    repository.mergeTables(action.sourceTableId, action.targetTableId)
+                }
+            }
+            _uiState.update {
+                it.copy(
+                    pendingAction = null,
+                    selectedTargetTableId = null,
+                    uiMode = UiMode.NORMAL,
+                    selectedTableId = action.targetTableId,
+                    selectedSourceTableId = action.targetTableId
+                )
+            }
+            observeRightPanel(action.targetTableId)
+        }
+    }
+
+    fun consumeSnackbarMessage() {
+        _uiState.update { it.copy(snackbarMessage = null) }
     }
 
     fun addMenuToSelectedTable(menuName: String, price: Int) {
@@ -162,6 +313,10 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
         viewModelScope.launch {
             repository.addMenuToTable(tableId = tableId, menuName = menuName, price = price)
         }
+    }
+
+    private fun pushSnackbar(message: String) {
+        _uiState.update { it.copy(snackbarMessage = message) }
     }
 
     fun reseedDemoData() {
@@ -215,7 +370,14 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             repository.observeTables(areaId).collectLatest { tables ->
                 val selected = _uiState.value.selectedTableId?.takeIf { id -> tables.any { it.tableId == id } }
                     ?: tables.firstOrNull()?.tableId
-                _uiState.update { it.copy(tables = tables, selectedTableId = selected) }
+                _uiState.update {
+                    it.copy(
+                        tables = tables,
+                        selectedTableId = selected,
+                        selectedSourceTableId = it.selectedSourceTableId?.takeIf { id -> tables.any { t -> t.tableId == id } },
+                        selectedTargetTableId = it.selectedTargetTableId?.takeIf { id -> tables.any { t -> t.tableId == id } }
+                    )
+                }
                 selected?.let(::observeRightPanel)
             }
         }
@@ -293,8 +455,19 @@ private fun PosTopBar() {
 fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
     val uiState by vm.uiState.collectAsState()
     val selectedTable = uiState.tables.firstOrNull { it.tableId == uiState.selectedTableId }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(modifier = Modifier.fillMaxSize(), topBar = { PosTopBar() }) { paddingValues ->
+    LaunchedEffect(uiState.snackbarMessage) {
+        val msg = uiState.snackbarMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        vm.consumeSnackbarMessage()
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { PosTopBar() },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -319,6 +492,16 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     }
                 }
 
+                if (uiState.uiMode != UiMode.NORMAL) {
+                    val modeLabel = if (uiState.uiMode == UiMode.SELECT_TARGET_FOR_MOVE) "이동 대상 테이블 선택" else "합석 대상 테이블 선택"
+                    Text(
+                        text = modeLabel,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                        color = Color(0xFF005645),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -339,16 +522,26 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         ) {
                             gridItems(uiState.tables) { table ->
                                 val selected = table.tableId == selectedTable?.tableId
+                                val isTargetMode = uiState.uiMode != UiMode.NORMAL
+                                val isTargetCandidate = isTargetMode &&
+                                    table.tableId != uiState.selectedSourceTableId &&
+                                    table.status != "DISABLED"
+                                val isSelectedTarget = table.tableId == uiState.selectedTargetTableId
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(150.dp)
                                         .border(
-                                            width = if (selected) 2.dp else 1.dp,
-                                            color = if (selected) Color(0xFF005645) else Color(0xFFDDDDDD),
+                                            width = if (selected || isSelectedTarget) 2.dp else 1.dp,
+                                            color = when {
+                                                isSelectedTarget -> Color(0xFF1E88E5)
+                                                selected -> Color(0xFF005645)
+                                                isTargetCandidate -> Color(0xFF8BC34A)
+                                                else -> Color(0xFFDDDDDD)
+                                            },
                                             shape = MaterialTheme.shapes.medium
                                         )
-                                        .clickable { vm.selectTable(table.tableId) }
+                                        .clickable { vm.onTableTileClicked(table.tableId, table.status) }
                                 ) {
                                     Column(
                                         modifier = Modifier
@@ -440,19 +633,57 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         ) {
                             Text("주문")
                         }
-                        Button(
-                            onClick = { /* TODO: 결제 처리 로직 연결 */ },
+                        OutlinedButton(
+                            onClick = { vm.startMoveMode() },
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                            enabled = uiState.uiMode == UiMode.NORMAL
                         ) {
-                            Text("결제")
+                            Text("이동")
                         }
+                        OutlinedButton(
+                            onClick = { vm.startMergeMode() },
+                            modifier = Modifier.weight(1f),
+                            enabled = uiState.uiMode == UiMode.NORMAL
+                        ) {
+                            Text("합석")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { /* TODO: 결제 처리 로직 연결 */ },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                    ) {
+                        Text("결제")
                     }
                 }
             }
         }
     }
+
+    val pending = uiState.pendingAction
+    if (pending != null) {
+        val sourceName = uiState.tables.firstOrNull { it.tableId == pending.sourceTableId }?.tableName ?: "T-${pending.sourceTableId}"
+        val targetName = uiState.tables.firstOrNull { it.tableId == pending.targetTableId }?.tableName ?: "T-${pending.targetTableId}"
+        val message = if (pending.type == TableActionType.MOVE) {
+            "${sourceName}의 주문을 ${targetName}로 이동할까요?"
+        } else {
+            "${sourceName}과 ${targetName}를 합석할까요?"
+        }
+        AlertDialog(
+            onDismissRequest = { vm.dismissPendingAction() },
+            title = { Text(if (pending.type == TableActionType.MOVE) "이동 확인" else "합석 확인") },
+            text = { Text(message) },
+            confirmButton = {
+                Button(onClick = { vm.confirmPendingAction() }) { Text("확인") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { vm.dismissPendingAction() }) { Text("취소") }
+            }
+        )
+    }
 }
+
 
 @Composable
 fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId: Long?) {

@@ -126,6 +126,9 @@ interface PosDao {
     @Query("SELECT COUNT(*) FROM orders")
     suspend fun getOrderCount(): Int
 
+    @Query("SELECT COUNT(*) FROM orders WHERE tableId = :tableId AND status IN ('CREATED','SENT')")
+    suspend fun getActiveOrderCountForTable(tableId: Long): Int
+
     @Query(
         """
         SELECT *
@@ -264,6 +267,24 @@ interface PosDao {
 
         updateTableStatus(fromTableId, "EMPTY")
         updateTableStatus(toTableId, "OCCUPIED")
+    }
+
+    @Transaction
+    suspend fun moveActiveOrder(fromTableId: Long, toTableId: Long): Boolean {
+        if (fromTableId == toTableId) return false
+
+        val fromOrder = getLatestActiveOrderForTable(fromTableId) ?: return false
+        val fromItems = getOrderItemsByOrderId(fromOrder.id)
+        val total = fromItems.sumOf { it.priceSnapshot * it.qty }
+
+        updateOrderTableAndTotal(
+            orderId = fromOrder.id,
+            tableId = toTableId,
+            totalAmount = total
+        )
+        updateTableStatus(fromTableId, "EMPTY")
+        updateTableStatus(toTableId, "OCCUPIED")
+        return true
     }
 
     @Transaction

@@ -64,6 +64,14 @@ class PosRepository(private val dao: PosDao) {
         dao.mergeTables(fromTableId = fromTableId, toTableId = toTableId)
     }
 
+    suspend fun moveActiveOrder(fromTableId: Long, toTableId: Long): Boolean {
+        return dao.moveActiveOrder(fromTableId = fromTableId, toTableId = toTableId)
+    }
+
+    suspend fun hasActiveOrder(tableId: Long): Boolean {
+        return dao.getActiveOrderCountForTable(tableId) > 0
+    }
+
     suspend fun addMenuToTable(tableId: Long, menuName: String, price: Int) {
         dao.addMenuToTable(tableId = tableId, itemName = menuName, price = price)
     }
