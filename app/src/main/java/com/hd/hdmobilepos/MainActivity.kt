@@ -591,7 +591,7 @@ private fun PosTopBar() {
             style = MaterialTheme.typography.headlineSmall
         )
         Column {
-            Text(now.format(dateFormatter), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(now.format(dateFormatter), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Gray)
             Text(now.format(timeFormatter), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         Surface(color = Color(0xFFE7E7E7), shape = MaterialTheme.shapes.small) {
@@ -613,7 +613,8 @@ private fun PosTopActionButton(label: String, icon: androidx.compose.ui.graphics
     OutlinedButton(
         onClick = {},
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF005645)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF005645).copy(alpha = 0.45f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF005645).copy(alpha = 0.45f)),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF005645))
         Text(label, color = Color(0xFF005645))
@@ -846,7 +847,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     val panel = uiState.rightPanel
                     val visiblePanelItems = panel?.items?.filter { it.priceSnapshot > 0 }.orEmpty()
                     if (panel == null) {
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier
+                                .weight(1f)
+                                .height(62.dp),
+                            shape = RoundedCornerShape(14.dp), contentAlignment = Alignment.Center) {
                             Text("활성 주문이 없습니다")
                         }
                     } else {
@@ -882,7 +886,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(62.dp),
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Text("추가 주문", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
@@ -890,7 +897,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = { /* TODO: 결제 처리 로직 연결 */ },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(62.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                     ) {
                         Text("결제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -965,19 +975,28 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             ) {
                 Button(
                     onClick = {},
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(72.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
                 ) { Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 Button(
                     onClick = {},
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(72.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
                 ) {
                     Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = {},
-                    modifier = Modifier.weight(1.5f),
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .height(72.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                 ) {
                     Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -1009,7 +1028,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A)),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
                         Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF6B4B2A))
                         Text("테이블 관리", color = Color(0xFF6B4B2A))

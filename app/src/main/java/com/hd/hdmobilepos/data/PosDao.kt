@@ -359,10 +359,8 @@ interface PosDao {
     @Transaction
     suspend fun cancelAllOrderItems(orderId: Long) {
         val order = getOrderById(orderId) ?: return
-        val items = getOrderItemsByOrderId(orderId)
-        if (items.isEmpty()) return
         deleteOrderItemsByOrderId(orderId)
-        updateOrderTotal(orderId, 0)
+        deleteOrderById(orderId)
         order.tableId?.let { updateTableStatus(it, "EMPTY") }
     }
 }
