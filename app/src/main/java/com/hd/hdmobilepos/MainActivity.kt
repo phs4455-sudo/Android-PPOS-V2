@@ -302,6 +302,7 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 
                 TableActionType.MERGE -> {
                     repository.mergeTables(action.sourceTableId, action.targetTableId)
+                    pushSnackbar("합석 처리되었습니다")
                 }
             }
             _uiState.update {
@@ -336,16 +337,25 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             }
             val targetHasActiveOrder = repository.hasActiveOrder(targetTableId)
             if (targetHasActiveOrder) {
-                repository.mergeTables(sourceTableId, targetTableId)
-                pushSnackbar("합석 처리되었습니다")
-            } else {
-                val moved = repository.moveActiveOrder(sourceTableId, targetTableId)
-                if (!moved) {
-                    pushSnackbar("이동할 활성 주문이 없습니다")
-                    return@launch
+                _uiState.update {
+                    it.copy(
+                        selectedTargetTableId = targetTableId,
+                        pendingAction = PendingTableAction(
+                            type = TableActionType.MERGE,
+                            sourceTableId = sourceTableId,
+                            targetTableId = targetTableId
+                        )
+                    )
                 }
-                pushSnackbar("이동 처리되었습니다")
+                return@launch
             }
+
+            val moved = repository.moveActiveOrder(sourceTableId, targetTableId)
+            if (!moved) {
+                pushSnackbar("이동할 활성 주문이 없습니다")
+                return@launch
+            }
+            pushSnackbar("이동 처리되었습니다")
 
             _uiState.update {
                 it.copy(
@@ -653,6 +663,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         Text("${table.totalAmount}원", fontWeight = FontWeight.SemiBold)
                                         Text("${formatElapsed(table.createdAt)} · ${table.capacity}명")
                                         Text(table.status, color = Color.Gray)
+                                        if (table.status == "MERGED") {
+                                            Text("합석됨", color = Color(0xFF1E88E5), fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                 }
                             }
@@ -679,8 +692,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold)
+                            val statusLabel = if (selectedTable.status == "MERGED") "합석됨" else selectedTable.status
                             Text(
-                                "${selectedTable.status} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
+                                "${statusLabel} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
                                 color = Color.White
                             )
                         }
@@ -731,20 +745,6 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("주문")
-                        }
-                        OutlinedButton(
-                            onClick = { vm.startMoveMode() },
-                            modifier = Modifier.weight(1f),
-                            enabled = uiState.uiMode == UiMode.NORMAL
-                        ) {
-                            Text("이동")
-                        }
-                        OutlinedButton(
-                            onClick = { vm.startMergeMode() },
-                            modifier = Modifier.weight(1f),
-                            enabled = uiState.uiMode == UiMode.NORMAL
-                        ) {
-                            Text("합석")
                         }
                     }
                     Spacer(Modifier.height(8.dp))

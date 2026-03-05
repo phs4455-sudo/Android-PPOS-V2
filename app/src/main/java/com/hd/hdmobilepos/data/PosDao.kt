@@ -158,6 +158,9 @@ interface PosDao {
     @Query("UPDATE tables SET status = :status WHERE id = :tableId")
     suspend fun updateTableStatus(tableId: Long, status: String)
 
+    @Query("SELECT status FROM tables WHERE id = :tableId LIMIT 1")
+    suspend fun getTableStatus(tableId: Long): String?
+
     @Query(
         """
         SELECT *
@@ -266,7 +269,7 @@ interface PosDao {
         }
 
         updateTableStatus(fromTableId, "EMPTY")
-        updateTableStatus(toTableId, "OCCUPIED")
+        updateTableStatus(toTableId, "MERGED")
     }
 
     @Transaction
@@ -317,6 +320,7 @@ interface PosDao {
 
         val total = getOrderTotalFromItems(activeOrderId)
         updateOrderTotal(activeOrderId, total)
-        updateTableStatus(tableId, "OCCUPIED")
+        val currentStatus = getTableStatus(tableId)
+        updateTableStatus(tableId, if (currentStatus == "MERGED") "MERGED" else "OCCUPIED")
     }
 }
