@@ -34,10 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -157,6 +157,13 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
         observeRightPanel(tableId)
     }
 
+    fun addMenuToSelectedTable(menuName: String, price: Int) {
+        val tableId = _uiState.value.selectedTableId ?: return
+        viewModelScope.launch {
+            repository.addMenuToTable(tableId = tableId, menuName = menuName, price = price)
+        }
+    }
+
     fun reseedDemoData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isReseeding = true, reseedMessage = null) }
@@ -250,7 +257,10 @@ fun MainNavHost(vm: MainViewModel) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "restaurant") {
         composable("restaurant") { RestaurantScreen(navController, vm) }
-        composable("food") { FoodCourtScreen(navController) }
+        composable("food/{tableId}") { backStackEntry ->
+            val tableId = backStackEntry.arguments?.getString("tableId")?.toLongOrNull()
+            FoodCourtScreen(navController = navController, vm = vm, tableId = tableId)
+        }
     }
 }
 
@@ -424,7 +434,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
 
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { navController.navigate("food") }, modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { navController.navigate("food/${selectedTable.tableId}") },
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Text("주문")
                         }
                         Button(
@@ -442,7 +455,13 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
 }
 
 @Composable
-fun FoodCourtScreen(navController: NavHostController) {
+fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId: Long?) {
+    val uiState by vm.uiState.collectAsState()
+
+    LaunchedEffect(tableId) {
+        tableId?.let(vm::selectTable)
+    }
+
     val menusByCategory = remember {
         linkedMapOf(
             "오므&커리" to listOf("오므라이스", "비프카레", "치킨카레", "새우카레"),
@@ -454,12 +473,12 @@ fun FoodCourtScreen(navController: NavHostController) {
     }
     val categories = remember(menusByCategory) { menusByCategory.keys.toList() }
     var selectedCategoryIndex by remember { mutableIntStateOf(0) }
-    val selectedMenus = remember { mutableStateListOf<String>() }
 
     val currentCategory = categories.getOrElse(selectedCategoryIndex) { categories.first() }
     val currentMenus = menusByCategory[currentCategory].orEmpty()
-    val unitPrice = 8000
-    val totalAmount = selectedMenus.size * unitPrice
+    val selectedTable = uiState.tables.firstOrNull { it.tableId == uiState.selectedTableId }
+    val panelItems = uiState.rightPanel?.items.orEmpty()
+    val totalAmount = uiState.rightPanel?.derivedTotalAmount ?: 0
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -503,7 +522,11 @@ fun FoodCourtScreen(navController: NavHostController) {
                     .background(Color(0xFFFAFAFA))
                     .padding(10.dp)
             ) {
-                Text("Table 1", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    selectedTable?.tableName ?: "선택된 테이블 없음",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("상품명", color = Color.Gray)
@@ -512,11 +535,11 @@ fun FoodCourtScreen(navController: NavHostController) {
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(selectedMenus) { name ->
+                    items(panelItems) { item ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(name)
-                            Text("1")
-                            Text("8,000원")
+                            Text(item.itemName)
+                            Text(item.qty.toString())
+                            Text("${item.lineTotal}원")
                         }
                     }
                 }
@@ -559,7 +582,7 @@ fun FoodCourtScreen(navController: NavHostController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(92.dp)
-                                .clickable { selectedMenus.add(menuName) }
+                                .clickable { vm.addMenuToSelectedTable(menuName = menuName, price = 8000) }
                         ) {
                             Column(
                                 modifier = Modifier

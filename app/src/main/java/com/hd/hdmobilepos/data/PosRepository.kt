@@ -64,6 +64,10 @@ class PosRepository(private val dao: PosDao) {
         dao.mergeTables(fromTableId = fromTableId, toTableId = toTableId)
     }
 
+    suspend fun addMenuToTable(tableId: Long, menuName: String, price: Int) {
+        dao.addMenuToTable(tableId = tableId, itemName = menuName, price = price)
+    }
+
     suspend fun forceReseedDemoData() {
         dao.resetAllData()
         seedIfNeeded()

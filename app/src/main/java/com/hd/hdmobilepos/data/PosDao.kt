@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -148,8 +149,39 @@ interface PosDao {
     @Query("UPDATE orders SET tableId = :tableId, totalAmount = :totalAmount WHERE id = :orderId")
     suspend fun updateOrderTableAndTotal(orderId: Long, tableId: Long, totalAmount: Int)
 
+    @Query("UPDATE orders SET totalAmount = :totalAmount WHERE id = :orderId")
+    suspend fun updateOrderTotal(orderId: Long, totalAmount: Int)
+
     @Query("UPDATE tables SET status = :status WHERE id = :tableId")
     suspend fun updateTableStatus(tableId: Long, status: String)
+
+    @Query(
+        """
+        SELECT *
+        FROM orders
+        WHERE tableId = :tableId AND status IN ('CREATED', 'SENT')
+        ORDER BY createdAt DESC, id DESC
+        LIMIT 1
+        """
+    )
+    suspend fun getLatestActiveOrderForTable(tableId: Long): Order?
+
+    @Query(
+        """
+        SELECT *
+        FROM order_items
+        WHERE orderId = :orderId AND nameSnapshot = :itemName AND priceSnapshot = :price
+        ORDER BY id
+        LIMIT 1
+        """
+    )
+    suspend fun getOrderItemByName(orderId: Long, itemName: String, price: Int): OrderItem?
+
+    @Update
+    suspend fun updateOrderItem(item: OrderItem)
+
+    @Query("SELECT COALESCE(SUM(priceSnapshot * qty), 0) FROM order_items WHERE orderId = :orderId")
+    suspend fun getOrderTotalFromItems(orderId: Long): Int
 
 
     @Query("DELETE FROM order_items")
@@ -232,5 +264,38 @@ interface PosDao {
 
         updateTableStatus(fromTableId, "EMPTY")
         updateTableStatus(toTableId, "OCCUPIED")
+    }
+
+    @Transaction
+    suspend fun addMenuToTable(tableId: Long, itemName: String, price: Int) {
+        val activeOrderId = getLatestActiveOrderForTable(tableId)?.id
+            ?: insertOrder(
+                Order(
+                    tableId = tableId,
+                    status = "CREATED",
+                    totalAmount = 0,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+
+        val existing = getOrderItemByName(activeOrderId, itemName, price)
+        if (existing == null) {
+            insertOrderItems(
+                listOf(
+                    OrderItem(
+                        orderId = activeOrderId,
+                        nameSnapshot = itemName,
+                        priceSnapshot = price,
+                        qty = 1
+                    )
+                )
+            )
+        } else {
+            updateOrderItem(existing.copy(qty = existing.qty + 1))
+        }
+
+        val total = getOrderTotalFromItems(activeOrderId)
+        updateOrderTotal(activeOrderId, total)
+        updateTableStatus(tableId, "OCCUPIED")
     }
 }
