@@ -357,7 +357,7 @@ interface PosDao {
     suspend fun cancelAllOrderItems(orderId: Long) {
         val items = getOrderItemsByOrderId(orderId)
         if (items.isEmpty()) return
-        items.forEach { updateOrderItem(it.copy(priceSnapshot = 0)) }
+        deleteOrderItemsByOrderId(orderId)
         updateOrderTotal(orderId, 0)
     }
 }

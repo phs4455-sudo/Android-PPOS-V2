@@ -780,7 +780,12 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                                 }
                                             )
                                         }
-                                        .clickable { vm.onTableTileClicked(table.tableId, table.status) }
+                                        .clickable {
+                                            vm.onTableTileClicked(table.tableId, table.status)
+                                            if (uiState.uiMode == UiMode.NORMAL && table.status == "EMPTY") {
+                                                navController.navigate("food/${table.tableId}")
+                                            }
+                                        }
                                 ) {
                                     Column(
                                         modifier = Modifier
@@ -837,6 +842,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     Spacer(Modifier.height(12.dp))
 
                     val panel = uiState.rightPanel
+                    val visiblePanelItems = panel?.items?.filter { it.priceSnapshot > 0 }.orEmpty()
                     if (panel == null) {
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                             Text("활성 주문이 없습니다")
@@ -846,7 +852,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         Spacer(Modifier.height(6.dp))
 
                         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(panel.items) { item ->
+                            items(visiblePanelItems) { item ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
@@ -1007,10 +1013,10 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.44f))
-                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.22f))
-                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.24f))
-                    Spacer(modifier = Modifier.weight(0.10f))
+                    Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.42f))
+                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.30f))
+                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.20f))
+                    Spacer(modifier = Modifier.width(32.dp))
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1022,13 +1028,13 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             val isCanceled = item.priceSnapshot == 0
                             Text(
                                 item.itemName,
-                                modifier = Modifier.weight(0.44f),
+                                modifier = Modifier.weight(0.42f),
                                 style = MaterialTheme.typography.bodyLarge,
                                 textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None,
                                 color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF222222)
                             )
                             Row(
-                                modifier = Modifier.weight(0.22f),
+                                modifier = Modifier.weight(0.30f),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -1045,7 +1051,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             Text(
                                 text = "${formatAmount(item.lineTotal)}원",
                                 modifier = Modifier
-                                    .weight(0.24f)
+                                    .weight(0.20f)
                                     .clickable {
                                         priceEditItem = item
                                         priceInput = item.priceSnapshot.toString()
@@ -1056,7 +1062,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             )
                             FilledTonalIconButton(
                                 onClick = { vm.toggleOrderItemCanceled(item.orderItemId) },
-                                modifier = Modifier.weight(0.10f).height(28.dp)
+                                modifier = Modifier.width(32.dp).height(28.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isCanceled) Icons.Filled.Undo else Icons.Filled.Close,
