@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -1089,12 +1090,21 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("행사적용", style = MaterialTheme.typography.bodySmall) }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("주문 보류", style = MaterialTheme.typography.bodySmall) }
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("행사적용", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("주문 보류", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                     OutlinedButton(
                         onClick = { showCancelAllDialog = true },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("전체취소", color = Color(0xFFD63B3B), style = MaterialTheme.typography.bodySmall) }
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("전체취소", color = Color(0xFFD63B3B), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                 }
             }
 
@@ -1137,10 +1147,12 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(10.dp),
-                                verticalArrangement = Arrangement.SpaceBetween
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(menuName, fontWeight = FontWeight.SemiBold)
-                                Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold)
+                                Text(menuName, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                Spacer(Modifier.height(6.dp))
+                                Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                             }
                         }
                     }
