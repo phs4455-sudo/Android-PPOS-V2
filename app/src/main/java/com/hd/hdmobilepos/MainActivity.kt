@@ -24,11 +24,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -52,7 +58,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -83,6 +88,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -490,16 +497,28 @@ fun MainNavHost(vm: MainViewModel) {
 
 @Composable
 private fun PosTopBar() {
+    val now = rememberCurrentDateTime()
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd (E)") }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm:ss") }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF4F4F4))
+            .background(Color(0xFFF5F5F5))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("THE HYUNDAI", fontWeight = FontWeight.ExtraBold, color = Color(0xFF005645))
-        Text("2026-03-03\n10:53:25", style = MaterialTheme.typography.bodySmall)
+        Text(
+            "THE HYUNDAI",
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF005645),
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Column {
+            Text(now.format(dateFormatter), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(now.format(timeFormatter), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
         Surface(color = Color(0xFFE7E7E7), shape = MaterialTheme.shapes.small) {
             Text("포스: 5556", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
         }
@@ -507,10 +526,31 @@ private fun PosTopBar() {
             Text("거래: 0014", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
         }
         Spacer(Modifier.weight(1f))
-        listOf("점검", "조회", "영수증 재출력", "더보기").forEach { label ->
-            OutlinedButton(onClick = {}) { Text(label) }
+        PosTopActionButton("점검", Icons.Filled.CheckCircle)
+        PosTopActionButton("조회", Icons.Filled.Search)
+        PosTopActionButton("영수증 재출력", Icons.Filled.Print)
+        PosTopActionButton("더보기", Icons.Filled.MoreVert)
+    }
+}
+
+@Composable
+private fun PosTopActionButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    OutlinedButton(onClick = {}) {
+        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp))
+        Text(label)
+    }
+}
+
+@Composable
+private fun rememberCurrentDateTime(): LocalDateTime {
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = LocalDateTime.now()
+            kotlinx.coroutines.delay(1000)
         }
     }
+    return now
 }
 
 @Composable
@@ -592,7 +632,18 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                     table.tableId != uiState.selectedSourceTableId &&
                                     table.status != "DISABLED"
                                 val isSelectedTarget = table.tableId == uiState.selectedTargetTableId
+                                val containerColor = when {
+                                    table.status == "DISABLED" -> Color(0xFFE0E0E0)
+                                    table.status == "MERGED" -> Color(0xFFC7A97E)
+                                    selected -> Color(0xFF005645)
+                                    else -> Color(0xFFFFFFFF)
+                                }
+                                val contentColor = if (selected || table.status == "MERGED") Color.White else Color(0xFF2E2E2E)
                                 Card(
+                                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                                        containerColor = containerColor,
+                                        contentColor = contentColor
+                                    ),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(150.dp)
@@ -623,8 +674,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                                     draggingTableId = table.tableId
                                                     draggingOffset = Offset.Zero
                                                 },
-                                                onDrag = { change, dragAmount ->
-                                                    change.consume()
+                                                onDrag = { _, dragAmount ->
                                                     if (draggingTableId == table.tableId) {
                                                         draggingOffset += dragAmount
                                                     }
@@ -662,9 +712,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         Text(table.tableName, fontWeight = FontWeight.Bold)
                                         Text("${table.totalAmount}원", fontWeight = FontWeight.SemiBold)
                                         Text("${formatElapsed(table.createdAt)} · ${table.capacity}명")
-                                        Text(table.status, color = Color.Gray)
+                                        Text(table.status, color = if (contentColor == Color.White) Color.White else Color.Gray)
                                         if (table.status == "MERGED") {
-                                            Text("합석됨", color = Color(0xFF1E88E5), fontWeight = FontWeight.Bold)
+                                            Text("합석됨", color = Color.White, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
