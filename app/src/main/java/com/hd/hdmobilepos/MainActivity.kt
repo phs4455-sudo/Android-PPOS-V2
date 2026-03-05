@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -442,6 +443,14 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
                 repository.changeOrderItemUnitPrice(orderId = orderId, orderItemId = orderItemId, newPrice = restorePrice)
                 pushSnackbar("상품 지정취소가 해제되었습니다")
             }
+        }
+    }
+
+    fun cancelAllCurrentOrderItems() {
+        val orderId = _uiState.value.rightPanel?.orderId ?: return
+        viewModelScope.launch {
+            repository.cancelAllOrderItems(orderId)
+            pushSnackbar("주문내역이 전체 취소되었습니다")
         }
     }
 
@@ -914,6 +923,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
     val uiState by vm.uiState.collectAsState()
     var priceEditItem by remember { mutableStateOf<RightPanelItemUi?>(null) }
     var priceInput by remember { mutableStateOf("") }
+    var showCancelAllDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(tableId) {
         tableId?.let(vm::selectTable)
@@ -983,11 +993,18 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     .background(Color(0xFFFAFAFA))
                     .padding(10.dp)
             ) {
-                Text(
-                    selectedTable?.tableName ?: "선택된 테이블 없음",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        selectedTable?.tableName ?: "선택된 테이블 없음",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp))
+                        Text("테이블 관리")
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.44f))
@@ -1049,15 +1066,6 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("행사적용", style = MaterialTheme.typography.bodySmall) }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("주문 보류", style = MaterialTheme.typography.bodySmall) }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("전체취소", color = Color(0xFFD63B3B), style = MaterialTheme.typography.bodySmall) }
-                }
-                Spacer(Modifier.height(8.dp))
                 Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
@@ -1065,8 +1073,16 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     color = Color(0xFFD63B3B),
                     fontWeight = FontWeight.Bold
                 )
-                OutlinedButton(onClick = { navController.popBackStack() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("레스토랑 화면으로")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("행사적용", style = MaterialTheme.typography.bodySmall) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("주문 보류", style = MaterialTheme.typography.bodySmall) }
+                    OutlinedButton(
+                        onClick = { showCancelAllDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("전체취소", color = Color(0xFFD63B3B), style = MaterialTheme.typography.bodySmall) }
                 }
             }
 
@@ -1146,6 +1162,23 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             },
             dismissButton = {
                 OutlinedButton(onClick = { priceEditItem = null }) { Text("취소") }
+            }
+        )
+    }
+
+    if (showCancelAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelAllDialog = false },
+            title = { Text("전체취소") },
+            text = { Text("주문내역을 취소하시겠습니까?") },
+            confirmButton = {
+                Button(onClick = {
+                    vm.cancelAllCurrentOrderItems()
+                    showCancelAllDialog = false
+                }) { Text("확인") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelAllDialog = false }) { Text("취소") }
             }
         )
     }

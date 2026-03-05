@@ -346,10 +346,18 @@ interface PosDao {
 
     @Transaction
     suspend fun changeOrderItemUnitPrice(orderId: Long, orderItemId: Long, newPrice: Int) {
-        if (newPrice <= 0) return
+        if (newPrice < 0) return
         val item = getOrderItemById(orderItemId) ?: return
         updateOrderItem(item.copy(priceSnapshot = newPrice))
         val total = getOrderTotalFromItems(orderId)
         updateOrderTotal(orderId, total)
+    }
+
+    @Transaction
+    suspend fun cancelAllOrderItems(orderId: Long) {
+        val items = getOrderItemsByOrderId(orderId)
+        if (items.isEmpty()) return
+        items.forEach { updateOrderItem(it.copy(priceSnapshot = 0)) }
+        updateOrderTotal(orderId, 0)
     }
 }

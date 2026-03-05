@@ -87,6 +87,10 @@ class PosRepository(private val dao: PosDao) {
         dao.changeOrderItemUnitPrice(orderId = orderId, orderItemId = orderItemId, newPrice = newPrice)
     }
 
+    suspend fun cancelAllOrderItems(orderId: Long) {
+        dao.cancelAllOrderItems(orderId)
+    }
+
     suspend fun forceReseedDemoData() {
         dao.resetAllData()
         seedIfNeeded()
