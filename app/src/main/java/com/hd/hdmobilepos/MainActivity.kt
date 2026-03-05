@@ -36,7 +36,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -306,24 +309,6 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     }
                 }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    OutlinedButton(onClick = { vm.reseedDemoData() }, enabled = !uiState.isReseeding) {
-                        Text(if (uiState.isReseeding) "재생성 중..." else "샘플데이터 재생성")
-                    }
-                }
-                uiState.reseedMessage?.let { msg ->
-                    Text(
-                        text = msg,
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        color = Color(0xFF005645)
-                    )
-                }
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -331,7 +316,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                 ) {
                     if (uiState.tables.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("테이블 데이터가 없습니다. 상단 버튼으로 재생성 해주세요.")
+                            Text("테이블 데이터가 없습니다")
                         }
                     } else {
                         LazyVerticalGrid(
@@ -458,8 +443,23 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
 
 @Composable
 fun FoodCourtScreen(navController: NavHostController) {
-    val categories = listOf("오므&커리", "본까스", "해천죽", "이심사철기", "미코")
-    val menuNames = listOf("열무보리비빔밥", "사리기름고기비빔밥", "한우 안심 스테이크", "두레 갈치조림")
+    val menusByCategory = remember {
+        linkedMapOf(
+            "오므&커리" to listOf("오므라이스", "비프카레", "치킨카레", "새우카레"),
+            "본까스" to listOf("등심 돈까스", "치즈 돈까스", "매운 돈까스", "생선까스"),
+            "해천죽" to listOf("전복죽", "소고기죽", "야채죽", "해물죽"),
+            "이심사철기" to listOf("철판 불고기", "철판 제육", "철판 낙지", "철판 우동"),
+            "미코" to listOf("열무보리비빔밥", "사리기름고기비빔밥", "한우 안심 스테이크", "두레 갈치조림")
+        )
+    }
+    val categories = remember(menusByCategory) { menusByCategory.keys.toList() }
+    var selectedCategoryIndex by remember { mutableIntStateOf(0) }
+    val selectedMenus = remember { mutableStateListOf<String>() }
+
+    val currentCategory = categories.getOrElse(selectedCategoryIndex) { categories.first() }
+    val currentMenus = menusByCategory[currentCategory].orEmpty()
+    val unitPrice = 8000
+    val totalAmount = selectedMenus.size * unitPrice
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -512,17 +512,17 @@ fun FoodCourtScreen(navController: NavHostController) {
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(menuNames) { name ->
+                    items(selectedMenus) { name ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(name)
                             Text("1")
-                            Text("8,000")
+                            Text("8,000원")
                         }
                     }
                 }
                 Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
-                    "71,000원",
+                    "${totalAmount}원",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color(0xFFD63B3B),
                     fontWeight = FontWeight.Bold
@@ -537,9 +537,13 @@ fun FoodCourtScreen(navController: NavHostController) {
                     .weight(2f)
                     .fillMaxHeight()
             ) {
-                ScrollableTabRow(selectedTabIndex = 0) {
+                ScrollableTabRow(selectedTabIndex = selectedCategoryIndex) {
                     categories.forEachIndexed { index, category ->
-                        Tab(selected = index == 0, onClick = {}, text = { Text(category) })
+                        Tab(
+                            selected = index == selectedCategoryIndex,
+                            onClick = { selectedCategoryIndex = index },
+                            text = { Text(category) }
+                        )
                     }
                 }
                 LazyVerticalGrid(
@@ -550,8 +554,13 @@ fun FoodCourtScreen(navController: NavHostController) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    gridItems(menuNames) { menuName ->
-                        Card(modifier = Modifier.fillMaxWidth().height(92.dp)) {
+                    gridItems(currentMenus) { menuName ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(92.dp)
+                                .clickable { selectedMenus.add(menuName) }
+                        ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
