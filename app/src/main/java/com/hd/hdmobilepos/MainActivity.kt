@@ -847,10 +847,12 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     val panel = uiState.rightPanel
                     val visiblePanelItems = panel?.items?.filter { it.priceSnapshot > 0 }.orEmpty()
                     if (panel == null) {
-                        Box(modifier = Modifier
+                        Box(
+                            modifier = Modifier
                                 .weight(1f)
-                                .height(62.dp),
-                            shape = RoundedCornerShape(14.dp), contentAlignment = Alignment.Center) {
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text("활성 주문이 없습니다")
                         }
                     } else {
