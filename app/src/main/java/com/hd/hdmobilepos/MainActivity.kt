@@ -26,14 +26,19 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -45,14 +50,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.animation.animateColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -697,16 +697,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                     table.status != "DISABLED"
                                 val isSelectedTarget = table.tableId == uiState.selectedTargetTableId
                                 val isSelectedSource = table.tableId == uiState.selectedTableId
-                                val borderTransition = rememberInfiniteTransition(label = "drag-ready-border")
-                                val selectedBorderColor by borderTransition.animateColor(
-                                    initialValue = Color(0xFF005645),
-                                    targetValue = Color(0xFF23A98B),
-                                    animationSpec = infiniteRepeatable(
-                                        animation = tween(900),
-                                        repeatMode = RepeatMode.Reverse
-                                    ),
-                                    label = "selected-border-color"
-                                )
+                                val isDragActiveSource = draggingTableId == table.tableId
                                 val containerColor = when {
                                     table.status == "DISABLED" -> Color(0xFFE0E0E0)
                                     table.status == "MERGED" -> Color(0xFFC7A97E)
@@ -734,10 +725,15 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         }
                                         .zIndex(if (draggingTableId == table.tableId) 10f else 0f)
                                         .border(
-                                            width = if (selected || isSelectedTarget) 2.dp else 1.dp,
+                                            width = when {
+                                                isDragActiveSource -> 4.dp
+                                                selected || isSelectedTarget -> 2.dp
+                                                else -> 1.dp
+                                            },
                                             color = when {
+                                                isDragActiveSource -> Color(0xFFFFB300)
                                                 isSelectedTarget -> Color(0xFF1E88E5)
-                                                isSelectedSource -> selectedBorderColor
+                                                isSelectedSource -> Color(0xFF005645)
                                                 isTargetCandidate -> Color(0xFF8BC34A)
                                                 else -> Color(0xFFDDDDDD)
                                             },
@@ -790,6 +786,8 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         Text(table.status, color = if (contentColor == Color.White) Color.White else Color.Gray)
                                         if (table.status == "MERGED") {
                                             Text("합석됨", color = Color.White, fontWeight = FontWeight.Bold)
+                                        } else if (isDragActiveSource) {
+                                            Text("드래그 모드", color = if (contentColor == Color.White) Color.White else Color(0xFFFFB300), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                         } else if (isSelectedSource) {
                                             Text("길게 눌러 드래그", color = if (contentColor == Color.White) Color.White else Color(0xFF008F73), style = MaterialTheme.typography.bodySmall)
                                         }
@@ -949,7 +947,11 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("반품/환불") }
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
+                ) { Text("반품/환불") }
                 Button(
                     onClick = {},
                     modifier = Modifier.weight(1f),
@@ -959,7 +961,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 }
                 Button(
                     onClick = {},
-                    modifier = Modifier.weight(1.6f),
+                    modifier = Modifier.weight(1.5f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                 ) {
                     Text("결제 진행")
@@ -987,40 +989,46 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.44f))
+                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.22f))
+                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.24f))
+                    Spacer(modifier = Modifier.weight(0.10f))
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(panelItems) { item ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(item.itemName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            val isCanceled = item.priceSnapshot == 0
+                            Text(
+                                item.itemName,
+                                modifier = Modifier.weight(0.44f),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None,
+                                color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF222222)
+                            )
                             Row(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(0.22f),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                OutlinedButton(
+                                FilledTonalIconButton(
                                     onClick = { vm.decreaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(30.dp)
-                                ) { Text("-", style = MaterialTheme.typography.bodySmall) }
-                                Text("${item.qty}", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
-                                OutlinedButton(
+                                    modifier = Modifier.height(28.dp).width(28.dp)
+                                ) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                Text("${item.qty}", modifier = Modifier.padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall)
+                                FilledTonalIconButton(
                                     onClick = { vm.increaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(30.dp)
-                                ) { Text("+", style = MaterialTheme.typography.bodySmall) }
+                                    modifier = Modifier.height(28.dp).width(28.dp)
+                                ) { Icon(Icons.Filled.Add, contentDescription = "증가") }
                             }
-                            val isCanceled = item.priceSnapshot == 0
                             Text(
                                 text = "${formatAmount(item.lineTotal)}원",
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(0.24f)
                                     .clickable {
                                         priceEditItem = item
                                         priceInput = item.priceSnapshot.toString()
@@ -1029,15 +1037,27 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF005645),
                                 textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None
                             )
-                            OutlinedButton(
+                            FilledTonalIconButton(
                                 onClick = { vm.toggleOrderItemCanceled(item.orderItemId) },
-                                modifier = Modifier.height(30.dp)
+                                modifier = Modifier.weight(0.10f).height(28.dp)
                             ) {
-                                Text(if (isCanceled) "↺" else "X", style = MaterialTheme.typography.bodySmall)
+                                Icon(
+                                    imageVector = if (isCanceled) Icons.Filled.Undo else Icons.Filled.Close,
+                                    contentDescription = if (isCanceled) "복원" else "지정취소"
+                                )
                             }
                         }
                     }
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("행사적용", style = MaterialTheme.typography.bodySmall) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("주문 보류", style = MaterialTheme.typography.bodySmall) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("전체취소", color = Color(0xFFD63B3B), style = MaterialTheme.typography.bodySmall) }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
