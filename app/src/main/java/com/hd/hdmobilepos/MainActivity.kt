@@ -44,7 +44,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
@@ -611,7 +610,7 @@ private fun PosTopBar() {
 private fun PosTopActionButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     OutlinedButton(
         onClick = {},
-        colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF005645)),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF005645)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF005645).copy(alpha = 0.45f))
     ) {
         Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF005645))
@@ -1013,7 +1012,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     )
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
-                        colors = OutlinedButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC1A57A)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC1A57A)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC1A57A))
                     ) {
                         Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFFC1A57A))
