@@ -69,6 +69,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -801,13 +802,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                         Text(table.tableName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
                                         Text("${formatAmount(table.totalAmount)}원", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                                         Text("${formatElapsed(table.createdAt)} · ${table.capacity}명", style = MaterialTheme.typography.bodySmall)
-                                        Text(table.status, color = if (contentColor == Color.White) Color.White else Color.Gray)
+                                        Text(formatTableStatus(table.status), color = if (contentColor == Color.White) Color.White else Color.Gray)
                                         if (table.status == "MERGED") {
                                             Text("합석됨", color = Color.White, fontWeight = FontWeight.Bold)
-                                        } else if (isDragActiveSource) {
-                                            Text("드래그 모드", color = if (contentColor == Color.White) Color.White else Color(0xFFFFB300), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                                        } else if (isSelectedSource) {
-                                            Text("길게 눌러 드래그", color = if (contentColor == Color.White) Color.White else Color(0xFF008F73), style = MaterialTheme.typography.bodySmall)
                                         }
                                     }
                                 }
@@ -835,9 +832,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
-                            val statusLabel = if (selectedTable.status == "MERGED") "합석됨" else selectedTable.status
+                            val statusLabel = if (selectedTable.status == "MERGED") "합석됨" else formatTableStatus(selectedTable.status)
                             Text(
-                                "${statusLabel} | 식사중 ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
+                                "${statusLabel} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
                                 color = Color.White
                             )
                         }
@@ -852,18 +849,23 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             Text("활성 주문이 없습니다")
                         }
                     } else {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.50f))
+                            Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.weight(0.20f))
+                            Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(0.30f))
+                        }
+                        Divider()
                         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(visiblePanelItems) { item ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(56.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(item.itemName)
-                                    Text("${item.qty}")
-                                    Text("${formatAmount(item.lineTotal)}원")
+                                    Text(item.itemName, modifier = Modifier.weight(0.50f))
+                                    Text("${item.qty}", textAlign = TextAlign.Center, modifier = Modifier.weight(0.20f))
+                                    Text("${formatAmount(item.lineTotal)}원", textAlign = TextAlign.End, modifier = Modifier.weight(0.30f))
                                 }
                                 Divider()
                             }
@@ -1005,18 +1007,18 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     )
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC1A57A)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC1A57A))
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A))
                     ) {
-                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFFC1A57A))
-                        Text("테이블 관리", color = Color(0xFFC1A57A))
+                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF6B4B2A))
+                        Text("테이블 관리", color = Color(0xFF6B4B2A))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("상품명", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.42f))
-                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.30f))
-                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.20f))
+                    Text("수량", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.weight(0.30f))
+                    Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(0.20f))
                     Spacer(modifier = Modifier.width(32.dp))
                 }
                 Divider()
@@ -1037,7 +1039,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF222222)
                             )
                             Row(
-                                modifier = Modifier.weight(0.30f),
+                                modifier = Modifier.weight(0.30f).fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -1060,6 +1062,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                         priceInput = item.priceSnapshot.toString()
                                     },
                                 style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.End,
                                 color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF005645),
                                 textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None
                             )
@@ -1191,6 +1194,16 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             }
         )
     }
+}
+
+
+private fun formatTableStatus(status: String): String = when (status) {
+    "OCCUPIED" -> "식사중"
+    "EMPTY" -> "빈자리"
+    "BILLING" -> "결제대기"
+    "DISABLED" -> "사용불가"
+    "MERGED" -> "합석됨"
+    else -> status
 }
 
 private fun formatElapsed(createdAt: Long?): String {
