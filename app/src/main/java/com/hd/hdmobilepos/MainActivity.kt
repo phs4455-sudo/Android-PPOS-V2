@@ -883,7 +883,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("주문")
+                            Text("추가 주문", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -892,7 +892,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                     ) {
-                        Text("결제")
+                        Text("결제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -966,20 +966,20 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     onClick = {},
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
-                ) { Text("반품/환불") }
+                ) { Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 Button(
                     onClick = {},
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
                 ) {
-                    Text("주문 보류")
+                    Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = {},
                     modifier = Modifier.weight(1.5f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                 ) {
-                    Text("결제 진행")
+                    Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
