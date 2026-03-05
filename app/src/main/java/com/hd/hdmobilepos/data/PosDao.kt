@@ -141,6 +141,9 @@ interface PosDao {
     )
     suspend fun getLatestOrderForTable(tableId: Long): Order?
 
+    @Query("SELECT * FROM orders WHERE id = :orderId LIMIT 1")
+    suspend fun getOrderById(orderId: Long): Order?
+
     @Query("SELECT * FROM order_items WHERE orderId = :orderId ORDER BY id")
     suspend fun getOrderItemsByOrderId(orderId: Long): List<OrderItem>
 
@@ -355,9 +358,11 @@ interface PosDao {
 
     @Transaction
     suspend fun cancelAllOrderItems(orderId: Long) {
+        val order = getOrderById(orderId) ?: return
         val items = getOrderItemsByOrderId(orderId)
         if (items.isEmpty()) return
         deleteOrderItemsByOrderId(orderId)
         updateOrderTotal(orderId, 0)
+        order.tableId?.let { updateTableStatus(it, "EMPTY") }
     }
 }

@@ -97,6 +97,8 @@ class PosRepository(private val dao: PosDao) {
     }
 
     suspend fun seedIfNeeded() {
+        if (dao.getTableCount() > 0) return
+
         dao.upsertArea(Area(id = 1, name = "식당가 1층 홀", sortOrder = 1))
         dao.upsertArea(Area(id = 2, name = "식당가 1층 룸", sortOrder = 2))
         dao.upsertArea(Area(id = 3, name = "식당가 2층 홀", sortOrder = 3))
@@ -116,8 +118,6 @@ class PosRepository(private val dao: PosDao) {
             DiningTable(id = 10, areaId = 4, name = "TERR-2", status = "DISABLED", capacity = 4)
         )
         defaultTables.forEach { dao.upsertTable(it) }
-
-        if (dao.getOrderCount() > 0) return
 
         val firstOrderId = dao.insertOrder(
             Order(
