@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
             AppDatabase::class.java,
             "ppos.db"
         )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()
