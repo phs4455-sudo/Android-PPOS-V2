@@ -821,7 +821,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                 modifier = Modifier
                     .width(360.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFFF7F7F7))
+                    .background(Color(0xFFF4F1EB))
                     .padding(14.dp)
             ) {
                 if (selectedTable == null) {
@@ -852,33 +852,26 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             Text("활성 주문이 없습니다")
                         }
                     } else {
-                        Text("주문상태: ${panel.orderStatus}", color = Color.Gray)
-                        Spacer(Modifier.height(6.dp))
-
                         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(visiblePanelItems) { item ->
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(item.itemName)
                                     Text("${item.qty}")
-                                    Text("${item.lineTotal}원")
+                                    Text("${formatAmount(item.lineTotal)}원")
                                 }
                                 Divider()
                             }
                         }
 
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("주문합계(계산)", color = Color.Gray)
-                            Text("${panel.derivedTotalAmount}원", fontWeight = FontWeight.Bold)
-                        }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("주문합계(DB)", color = Color.Gray)
-                            Text("${panel.orderTotalAmount}원", color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
-                        }
-                        if (panel.isTotalMismatch) {
-                            Text("합계 불일치: 계산값과 DB 총액이 다릅니다", color = Color(0xFFD63B3B))
+                            Text("주문합계", color = Color.Gray)
+                            Text("${formatAmount(panel.orderTotalAmount)}원", color = Color(0xFF005645), fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -1000,7 +993,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 modifier = Modifier
                     .weight(0.9f)
                     .fillMaxHeight()
-                    .background(Color(0xFFFAFAFA))
+                    .background(Color(0xFFF8F5EE))
                     .padding(10.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1030,7 +1023,9 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(panelItems) { item ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val isCanceled = item.priceSnapshot == 0
