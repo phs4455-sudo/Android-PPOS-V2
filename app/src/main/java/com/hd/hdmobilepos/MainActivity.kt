@@ -33,11 +33,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.Payment
@@ -47,7 +49,6 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
@@ -1354,12 +1355,17 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         onClick = { navController.popBackStack() },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(y = (-60 - tableBtnOffset).dp),
-                        shape = RoundedCornerShape(50),
+                            .offset(y = (-60 - tableBtnOffset).dp)
+                            .width(96.dp)
+                            .height(96.dp),
+                        shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD8CCD2), contentColor = Color.White)
                     ) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "테이블 화면", modifier = Modifier.padding(end = 4.dp), tint = Color.White)
-                        Text("테이블 화면", color = Color.White, fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Filled.OpenInNew, contentDescription = "테이블 화면 진입", tint = Color.White)
+                            Spacer(Modifier.height(4.dp))
+                            Text("테이블 화면", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
             }
