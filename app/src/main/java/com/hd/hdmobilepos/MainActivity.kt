@@ -39,11 +39,13 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
@@ -955,6 +957,8 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                     contentDescription = "아래로 더보기",
                                     tint = Color(0xFF005645),
                                     modifier = Modifier
+                                        .width(36.dp)
+                                        .height(36.dp)
                                         .align(Alignment.BottomCenter)
                                         .offset(y = (-bounceOffset).dp)
                                 )
@@ -980,6 +984,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                 .height(62.dp),
                             shape = RoundedCornerShape(14.dp)
                         ) {
+                            Icon(Icons.Filled.AddShoppingCart, contentDescription = "추가 주문", modifier = Modifier.padding(end = 6.dp))
                             Text("추가 주문", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                         Button(
@@ -990,6 +995,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                         ) {
+                            Icon(Icons.Filled.Payment, contentDescription = "결제", modifier = Modifier.padding(end = 6.dp))
                             Text("결제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -1197,7 +1203,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(24.dp))
                 Text("받을 금액", modifier = Modifier.padding(start = 10.dp), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
