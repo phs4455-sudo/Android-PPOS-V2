@@ -2,6 +2,15 @@ package com.hd.hdmobilepos
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.runtime.derivedStateOf
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -592,13 +601,16 @@ private fun PosTopBar() {
             color = Color(0xFF005645),
             style = MaterialTheme.typography.headlineSmall
         )
+        Spacer(Modifier.width(6.dp))
         Column {
             Text(now.format(dateFormatter), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
             Text(now.format(timeFormatter), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
+        Spacer(Modifier.width(6.dp))
         Surface(color = Color(0xFFE7E7E7), shape = MaterialTheme.shapes.small) {
             Text("포스: 5556", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
         }
+        Spacer(Modifier.width(4.dp))
         Surface(color = Color(0xFFE7E7E7), shape = MaterialTheme.shapes.small) {
             Text("거래: 0014", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
         }
@@ -900,22 +912,56 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             Text("금액", color = Color.Gray, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.weight(0.30f))
                         }
                         Divider()
-                        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(visiblePanelItems) { item ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(item.itemName, modifier = Modifier.weight(0.50f))
-                                    Text("${item.qty}", textAlign = TextAlign.Center, modifier = Modifier.weight(0.20f))
-                                    Text("${formatAmount(item.lineTotal)}원", textAlign = TextAlign.End, modifier = Modifier.weight(0.30f))
+                        val listState = rememberLazyListState()
+                        val showScrollHint by remember(visiblePanelItems, listState) {
+                            derivedStateOf {
+                                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                                lastVisible < visiblePanelItems.lastIndex
+                            }
+                        }
+                        val bounceTransition = rememberInfiniteTransition(label = "scrollHint")
+                        val bounceOffset by bounceTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 8f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "scrollHintOffset"
+                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(visiblePanelItems) { item ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(56.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(item.itemName, modifier = Modifier.weight(0.50f))
+                                        Text("${item.qty}", textAlign = TextAlign.Center, modifier = Modifier.weight(0.20f))
+                                        Text("${formatAmount(item.lineTotal)}원", textAlign = TextAlign.End, modifier = Modifier.weight(0.30f))
+                                    }
+                                    Divider()
                                 }
-                                Divider()
+                            }
+                            if (showScrollHint) {
+                                Icon(
+                                    imageVector = Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = "아래로 더보기",
+                                    tint = Color(0xFF005645),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .offset(y = (-bounceOffset).dp)
+                                )
                             }
                         }
 
+                        Spacer(Modifier.height(12.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("주문합계", color = Color.Black, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text("${formatAmount(panel.orderTotalAmount)}원", color = Color(0xFFD63B3B), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -923,7 +969,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     }
 
                     Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedButton(
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
                             modifier = Modifier
@@ -933,17 +982,16 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         ) {
                             Text("추가 주문", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = { /* TODO: 결제 처리 로직 연결 */ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(62.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
-                    ) {
-                        Text("결제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { /* TODO: 결제 처리 로직 연결 */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(62.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                        ) {
+                            Text("결제", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -1059,19 +1107,21 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     .padding(10.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            selectedTable?.tableName ?: "선택된 테이블 없음",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Filled.AccessTime, contentDescription = "식사시간", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
-                            Text(uiState.rightPanel?.elapsedLabel ?: "0분", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
-                            Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
-                            Text("${selectedTable?.capacity ?: 0}명", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
-                        }
+                    Text(
+                        selectedTable?.tableName ?: "선택된 테이블 없음",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(end = 10.dp)
+                    ) {
+                        Icon(Icons.Filled.AccessTime, contentDescription = "식사시간", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
+                        Text(uiState.rightPanel?.elapsedLabel ?: "0분", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
+                        Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
+                        Text("${selectedTable?.capacity ?: 0}명", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
                     }
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
@@ -1148,15 +1198,18 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("받을 금액", modifier = Modifier.padding(start = 10.dp), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
+                    modifier = Modifier.padding(start = 10.dp),
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color(0xFFD63B3B),
                     fontWeight = FontWeight.Bold
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
