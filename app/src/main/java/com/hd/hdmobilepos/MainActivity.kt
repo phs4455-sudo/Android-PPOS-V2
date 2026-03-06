@@ -1133,61 +1133,66 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     label = "leftScrollHintOffset"
                 )
                 Box(modifier = Modifier.weight(1f)) {
-                    LazyColumn(state = leftListState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(panelItems) { item ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val isCanceled = item.priceSnapshot == 0
-                            Text(
-                                item.itemName,
-                                modifier = Modifier.weight(0.42f),
-                                style = MaterialTheme.typography.bodyLarge,
-                                textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None,
-                                color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF222222)
-                            )
+                    LazyColumn(
+                        state = leftListState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(panelItems) { item ->
                             Row(
-                                modifier = Modifier.weight(0.30f).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                FilledTonalIconButton(
-                                    onClick = { vm.decreaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(28.dp).width(28.dp),
-                                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
-                                ) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
-                                Text("${item.qty}", modifier = Modifier.padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall)
-                                FilledTonalIconButton(
-                                    onClick = { vm.increaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(28.dp).width(28.dp),
-                                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
-                                ) { Icon(Icons.Filled.Add, contentDescription = "증가") }
-                            }
-                            Text(
-                                text = "${formatAmount(item.lineTotal)}원",
-                                modifier = Modifier
-                                    .weight(0.20f)
-                                    .clickable {
-                                        priceEditItem = item
-                                        priceInput = item.priceSnapshot.toString()
-                                    },
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.End,
-                                color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF005645),
-                                textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None
-                            )
-                            FilledTonalIconButton(
-                                onClick = { vm.toggleOrderItemCanceled(item.orderItemId) },
-                                modifier = Modifier.width(32.dp).height(28.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
-                            ) {
-                                Icon(
-                                    imageVector = if (isCanceled) Icons.Filled.Undo else Icons.Filled.Close,
-                                    contentDescription = if (isCanceled) "복원" else "지정취소"
+                                val isCanceled = item.priceSnapshot == 0
+                                Text(
+                                    item.itemName,
+                                    modifier = Modifier.weight(0.42f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None,
+                                    color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF222222)
                                 )
+                                Row(
+                                    modifier = Modifier.weight(0.30f).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    FilledTonalIconButton(
+                                        onClick = { vm.decreaseOrderItemQty(item.orderItemId) },
+                                        modifier = Modifier.height(28.dp).width(28.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
+                                    ) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                    Text("${item.qty}", modifier = Modifier.padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall)
+                                    FilledTonalIconButton(
+                                        onClick = { vm.increaseOrderItemQty(item.orderItemId) },
+                                        modifier = Modifier.height(28.dp).width(28.dp),
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
+                                    ) { Icon(Icons.Filled.Add, contentDescription = "증가") }
+                                }
+                                Text(
+                                    text = "${formatAmount(item.lineTotal)}원",
+                                    modifier = Modifier
+                                        .weight(0.20f)
+                                        .clickable {
+                                            priceEditItem = item
+                                            priceInput = item.priceSnapshot.toString()
+                                        },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    textAlign = TextAlign.End,
+                                    color = if (isCanceled) Color(0xFFD63B3B) else Color(0xFF005645),
+                                    textDecoration = if (isCanceled) TextDecoration.LineThrough else TextDecoration.None
+                                )
+                                FilledTonalIconButton(
+                                    onClick = { vm.toggleOrderItemCanceled(item.orderItemId) },
+                                    modifier = Modifier.width(32.dp).height(28.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isCanceled) Icons.Filled.Undo else Icons.Filled.Close,
+                                        contentDescription = if (isCanceled) "복원" else "지정취소"
+                                    )
+                                }
                             }
                         }
                     }
