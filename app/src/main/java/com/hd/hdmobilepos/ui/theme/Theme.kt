@@ -1,10 +1,13 @@
 package com.hd.hdmobilepos.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 
 private val HyundaiGreen = Color(0xFF005645)
 private val HyundaiBrown = Color(0xFFC1A57A)
@@ -28,11 +31,33 @@ private val DarkColors = darkColorScheme(
     tertiary = Color(0xFFD9C29E)
 )
 
+private val AppTypography = Typography().let { base ->
+    base.copy(
+        displayLarge = base.displayLarge.rounded(),
+        displayMedium = base.displayMedium.rounded(),
+        displaySmall = base.displaySmall.rounded(),
+        headlineLarge = base.headlineLarge.rounded(),
+        headlineMedium = base.headlineMedium.rounded(),
+        headlineSmall = base.headlineSmall.rounded(),
+        titleLarge = base.titleLarge.rounded(),
+        titleMedium = base.titleMedium.rounded(),
+        titleSmall = base.titleSmall.rounded(),
+        bodyLarge = base.bodyLarge.rounded(),
+        bodyMedium = base.bodyMedium.rounded(),
+        bodySmall = base.bodySmall.rounded(),
+        labelLarge = base.labelLarge.rounded(),
+        labelMedium = base.labelMedium.rounded(),
+        labelSmall = base.labelSmall.rounded()
+    )
+}
+
+private fun TextStyle.rounded(): TextStyle = copy(fontFamily = FontFamily.SansSerif)
+
 @Composable
 fun PPOSTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = LightColors,
-        typography = MaterialTheme.typography,
+        typography = AppTypography,
         content = content
     )
 }

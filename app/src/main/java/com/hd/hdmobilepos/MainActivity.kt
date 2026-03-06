@@ -55,6 +55,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
@@ -1059,44 +1060,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { PosTopBar() },
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {},
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
-                ) { Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                Button(
-                    onClick = {},
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
-                ) {
-                    Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Button(
-                    onClick = {},
-                    modifier = Modifier
-                        .weight(1.5f)
-                        .height(72.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
-                ) {
-                    Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
+        topBar = { PosTopBar() }
     ) { paddingValues ->
         Row(
             modifier = Modifier
@@ -1109,7 +1073,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 modifier = Modifier
                     .weight(0.9f)
                     .fillMaxHeight()
-                    .background(Color(0xFFF8F5EE))
+                    .background(Color.White)
                     .padding(10.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1170,12 +1134,14 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             ) {
                                 FilledTonalIconButton(
                                     onClick = { vm.decreaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(28.dp).width(28.dp)
+                                    modifier = Modifier.height(28.dp).width(28.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
                                 ) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
                                 Text("${item.qty}", modifier = Modifier.padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall)
                                 FilledTonalIconButton(
                                     onClick = { vm.increaseOrderItemQty(item.orderItemId) },
-                                    modifier = Modifier.height(28.dp).width(28.dp)
+                                    modifier = Modifier.height(28.dp).width(28.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
                                 ) { Icon(Icons.Filled.Add, contentDescription = "증가") }
                             }
                             Text(
@@ -1193,7 +1159,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             )
                             FilledTonalIconButton(
                                 onClick = { vm.toggleOrderItemCanceled(item.orderItemId) },
-                                modifier = Modifier.width(32.dp).height(28.dp)
+                                modifier = Modifier.width(32.dp).height(28.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
                             ) {
                                 Icon(
                                     imageVector = if (isCanceled) Icons.Filled.Undo else Icons.Filled.Close,
@@ -1203,11 +1170,10 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         }
                     }
                 }
-                Spacer(Modifier.height(24.dp))
-                Text("받을 금액", modifier = Modifier.padding(start = 10.dp), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.weight(1f))
+                Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
-                    modifier = Modifier.padding(start = 10.dp),
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color(0xFFD63B3B),
                     fontWeight = FontWeight.Bold
@@ -1215,7 +1181,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 10.dp),
+                        .padding(start = 0.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
@@ -1240,6 +1206,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 modifier = Modifier
                     .weight(2f)
                     .fillMaxHeight()
+                    .background(Color(0xFFF8F5EE))
+                    .padding(10.dp)
             ) {
                 ScrollableTabRow(selectedTabIndex = selectedCategoryIndex) {
                     categories.forEachIndexed { index, category ->
@@ -1259,7 +1227,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
+                        .fillMaxWidth()
                         .padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1269,7 +1238,9 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(92.dp)
-                                .clickable { vm.addMenuToSelectedTable(menuName = menuName, price = 8000) }
+                                .clickable { vm.addMenuToSelectedTable(menuName = menuName, price = 8000) },
+                            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5F5F5))
                         ) {
                             Column(
                                 modifier = Modifier
@@ -1283,6 +1254,42 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                             }
                         }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {},
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(72.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
+                    ) { Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                    Button(
+                        onClick = {},
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(72.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
+                    ) {
+                        Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = {},
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(72.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                    ) {
+                        Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
