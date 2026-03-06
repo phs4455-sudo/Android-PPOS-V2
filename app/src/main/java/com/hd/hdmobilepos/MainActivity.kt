@@ -1355,19 +1355,26 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(y = (-86 - tableBtnOffset).dp)
-                            .width(140.dp)
-                            .height(54.dp),
+                            .width(120.dp)
+                            .height(82.dp),
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD8CCD2), contentColor = Color.White)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "테이블 화면", tint = Color.White)
-                            Spacer(Modifier.width(6.dp))
-                            Text("테이블 화면", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "테이블 화면",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
