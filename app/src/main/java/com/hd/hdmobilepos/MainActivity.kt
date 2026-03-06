@@ -989,15 +989,29 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        Button(
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(62.dp),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD8CCD2),
+                                contentColor = Color.White
+                            )
                         ) {
-                            Icon(Icons.Filled.AddShoppingCart, contentDescription = "추가 주문", modifier = Modifier.padding(end = 6.dp))
-                            Text("추가 주문", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Icon(
+                                Icons.Filled.AddShoppingCart,
+                                contentDescription = "추가 주문",
+                                tint = Color.White,
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(
+                                "추가 주문",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                         Button(
                             onClick = { /* TODO: 결제 처리 로직 연결 */ },
