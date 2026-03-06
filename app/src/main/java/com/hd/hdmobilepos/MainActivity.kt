@@ -558,6 +558,8 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
 }
 
 
+private fun formatAmount(value: Int): String = String.format(Locale.KOREA, "%,d", value)
+
 private fun formatElapsed(createdAt: Long): String {
     val elapsedMillis = (System.currentTimeMillis() - createdAt).coerceAtLeast(0)
     return "${TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)}분"
@@ -1424,4 +1426,3 @@ private fun formatElapsed(createdAt: Long?): String {
     return "${TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)}분"
 }
 
-private fun formatAmount(value: Int): String = String.format(Locale.KOREA, "%,d", value)
