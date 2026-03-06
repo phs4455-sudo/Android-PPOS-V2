@@ -57,7 +57,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.foundation.Image
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -80,7 +79,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -92,7 +90,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -611,11 +608,11 @@ private fun PosTopBar() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.the_hyundai_bi),
-            contentDescription = "THE HYUNDAI",
-            modifier = Modifier.width(132.dp).height(42.dp),
-            contentScale = ContentScale.Fit
+        Text(
+            "THE HYUNDAI",
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF005645),
+            style = MaterialTheme.typography.headlineSmall
         )
         Spacer(Modifier.width(6.dp))
         Column {
