@@ -39,7 +39,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
@@ -55,6 +57,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.Image
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -77,6 +80,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -88,6 +92,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -598,11 +603,11 @@ private fun PosTopBar() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            "THE HYUNDAI",
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF005645),
-            style = MaterialTheme.typography.headlineSmall
+        Image(
+            painter = painterResource(id = R.drawable.the_hyundai_bi),
+            contentDescription = "THE HYUNDAI",
+            modifier = Modifier.width(132.dp).height(42.dp),
+            contentScale = ContentScale.Fit
         )
         Spacer(Modifier.width(6.dp))
         Column {
@@ -629,12 +634,12 @@ private fun PosTopBar() {
 private fun PosTopActionButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     OutlinedButton(
         onClick = {},
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF005645)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF005645).copy(alpha = 0.45f)),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Black.copy(alpha = 0.35f)),
         shape = RoundedCornerShape(14.dp)
     ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF005645))
-        Text(label, color = Color(0xFF005645))
+        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp), tint = Color.Black)
+        Text(label, color = Color.Black)
     }
 }
 
@@ -956,10 +961,10 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                 Icon(
                                     imageVector = Icons.Filled.KeyboardArrowDown,
                                     contentDescription = "아래로 더보기",
-                                    tint = Color(0xFF005645),
+                                    tint = Color.Black,
                                     modifier = Modifier
-                                        .width(36.dp)
-                                        .height(36.dp)
+                                        .width(34.dp)
+                                        .height(34.dp)
                                         .align(Alignment.BottomCenter)
                                         .offset(y = (-bounceOffset).dp)
                                 )
@@ -1093,15 +1098,6 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
                         Text("${selectedTable?.capacity ?: 0}명", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
                     }
-                    OutlinedButton(
-                        onClick = { navController.popBackStack() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A)),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF6B4B2A))
-                        Text("테이블 관리", color = Color(0xFF6B4B2A))
-                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1111,7 +1107,25 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     Spacer(modifier = Modifier.width(32.dp))
                 }
                 Divider()
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val leftListState = rememberLazyListState()
+                val showLeftScrollHint by remember(panelItems, leftListState) {
+                    derivedStateOf {
+                        val lastVisible = leftListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                        lastVisible < panelItems.lastIndex
+                    }
+                }
+                val leftBounceTransition = rememberInfiniteTransition(label = "leftScrollHint")
+                val leftBounceOffset by leftBounceTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 8f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "leftScrollHintOffset"
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    LazyColumn(state = leftListState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(panelItems) { item ->
                         Row(
                             modifier = Modifier
@@ -1169,15 +1183,32 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             }
                         }
                     }
+                    if (showLeftScrollHint) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "아래로 더보기",
+                            tint = Color(0xFF6B4B2A),
+                            modifier = Modifier
+                                .width(30.dp)
+                                .height(30.dp)
+                                .align(Alignment.BottomCenter)
+                                .offset(y = (-leftBounceOffset).dp)
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    "${formatAmount(totalAmount)}원",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color(0xFFD63B3B),
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "${formatAmount(totalAmount)}원",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color(0xFFD63B3B),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1257,39 +1288,58 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {},
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(72.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
-                    ) { Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                    Button(
-                        onClick = {},
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(72.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
+                            .fillMaxWidth()
+                            .padding(bottom = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = {},
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(72.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C8EA1))
+                        ) {
+                            Icon(Icons.Filled.Replay, contentDescription = "반품/환불", modifier = Modifier.padding(end = 5.dp))
+                            Text("반품/환불", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {},
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(72.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645))
+                        ) {
+                            Icon(Icons.Filled.PauseCircle, contentDescription = "주문 보류", modifier = Modifier.padding(end = 5.dp))
+                            Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {},
+                            modifier = Modifier
+                                .weight(1.5f)
+                                .height(72.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                        ) {
+                            Icon(Icons.Filled.Payment, contentDescription = "결제 진행", modifier = Modifier.padding(end = 5.dp))
+                            Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
                     }
-                    Button(
-                        onClick = {},
+                    OutlinedButton(
+                        onClick = { navController.popBackStack() },
                         modifier = Modifier
-                            .weight(1.5f)
-                            .height(72.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
+                            .align(Alignment.TopEnd)
+                            .offset(y = (-60).dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A)),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF6B4B2A))
+                        Text("테이블 관리", color = Color(0xFF6B4B2A))
                     }
                 }
             }
