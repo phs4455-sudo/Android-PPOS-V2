@@ -733,7 +733,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                         }
                     } else {
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(4),
+                            columns = GridCells.Fixed(5),
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(20.dp),
