@@ -7,7 +7,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import com.hd.hdmobilepos.R
 
 private val HyundaiGreen = Color(0xFF005645)
 private val HyundaiBrown = Color(0xFFC1A57A)
@@ -51,7 +53,9 @@ private val AppTypography = Typography().let { base ->
     )
 }
 
-private fun TextStyle.rounded(): TextStyle = copy(fontFamily = FontFamily.SansSerif)
+private val NotoSansKrFamily = FontFamily(Font(R.font.noto_sans_kr))
+
+private fun TextStyle.rounded(): TextStyle = copy(fontFamily = NotoSansKrFamily)
 
 @Composable
 fun PPOSTheme(content: @Composable () -> Unit) {
