@@ -29,9 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
@@ -591,8 +593,8 @@ private fun PosTopBar() {
             style = MaterialTheme.typography.headlineSmall
         )
         Column {
-            Text(now.format(dateFormatter), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.Gray)
-            Text(now.format(timeFormatter), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(now.format(dateFormatter), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text(now.format(timeFormatter), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         Surface(color = Color(0xFFE7E7E7), shape = MaterialTheme.shapes.small) {
             Text("포스: 5556", modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
@@ -803,7 +805,15 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                                     ) {
                                         Text(table.tableName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
                                         Text("${formatAmount(table.totalAmount)}원", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-                                        Text("${formatElapsed(table.createdAt)} · ${table.capacity}명", style = MaterialTheme.typography.bodySmall)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(Icons.Filled.AccessTime, contentDescription = "식사시간", modifier = Modifier.width(18.dp).height(18.dp), tint = contentColor)
+                                            Text(formatElapsed(table.createdAt), style = MaterialTheme.typography.titleSmall)
+                                            Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = contentColor)
+                                            Text("${table.capacity}명", style = MaterialTheme.typography.titleSmall)
+                                        }
                                         Text(formatTableStatus(table.status), color = if (contentColor == Color.White) Color.White else Color.Gray)
                                         if (table.status == "MERGED") {
                                             Text("합석됨", color = Color.White, fontWeight = FontWeight.Bold)
@@ -829,16 +839,37 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                     }
                 } else {
                     Surface(color = Color(0xFF005645), modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
-                            val statusLabel = if (selectedTable.status == "MERGED") "합석됨" else formatTableStatus(selectedTable.status)
-                            Text(
-                                "${statusLabel} | ${uiState.rightPanel?.elapsedLabel ?: "0분"} | ${selectedTable.capacity}명",
-                                color = Color.White
-                            )
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            val chipColors = statusChipColors(selectedTable.status)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(selectedTable.tableName, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
+                                Surface(
+                                    color = chipColors.first,
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = formatTableStatus(selectedTable.status),
+                                        color = chipColors.second,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Filled.AccessTime, contentDescription = "식사시간", modifier = Modifier.width(18.dp).height(18.dp), tint = Color.White)
+                                Text(uiState.rightPanel?.elapsedLabel ?: "0분", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                                Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = Color.White)
+                                Text("${selectedTable.capacity}명", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                            }
                         }
                     }
 
@@ -1230,6 +1261,15 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
     }
 }
 
+
+private fun statusChipColors(status: String): Pair<Color, Color> = when (status) {
+    "OCCUPIED" -> Color(0xFFE2F3EC) to Color(0xFF005645)
+    "EMPTY" -> Color(0xFFF0F0F0) to Color(0xFF5E5E5E)
+    "BILLING" -> Color(0xFFFFEED1) to Color(0xFF9A6300)
+    "DISABLED" -> Color(0xFFE6E6E6) to Color(0xFF8A8A8A)
+    "MERGED" -> Color(0xFFEFE3D0) to Color(0xFF6B4B2A)
+    else -> Color(0xFFE2F3EC) to Color(0xFF005645)
+}
 
 private fun formatTableStatus(status: String): String = when (status) {
     "OCCUPIED" -> "식사중"
