@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
@@ -1199,8 +1200,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             contentDescription = "아래로 더보기",
                             tint = Color(0xFF6B4B2A),
                             modifier = Modifier
-                                .width(30.dp)
-                                .height(30.dp)
+                                .width(45.dp)
+                                .height(45.dp)
                                 .align(Alignment.BottomCenter)
                                 .offset(y = (-leftBounceOffset).dp)
                         )
@@ -1339,17 +1340,26 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             Text("결제 진행", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                     }
-                    OutlinedButton(
+                    val tableBtnTransition = rememberInfiniteTransition(label = "tableScreenBtn")
+                    val tableBtnOffset by tableBtnTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 6f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "tableScreenBtnOffset"
+                    )
+                    Button(
                         onClick = { navController.popBackStack() },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(y = (-60).dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF6B4B2A)),
-                        shape = RoundedCornerShape(14.dp)
+                            .offset(y = (-60 - tableBtnOffset).dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD8CCD2), contentColor = Color.White)
                     ) {
-                        Icon(Icons.Filled.TableRestaurant, contentDescription = "테이블 관리", modifier = Modifier.padding(end = 4.dp), tint = Color(0xFF6B4B2A))
-                        Text("테이블 관리", color = Color(0xFF6B4B2A))
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "테이블 화면", modifier = Modifier.padding(end = 4.dp), tint = Color.White)
+                        Text("테이블 화면", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
