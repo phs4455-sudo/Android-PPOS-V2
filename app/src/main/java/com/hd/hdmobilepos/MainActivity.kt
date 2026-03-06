@@ -557,6 +557,12 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
     }
 }
 
+
+private fun formatElapsed(createdAt: Long): String {
+    val elapsedMillis = (System.currentTimeMillis() - createdAt).coerceAtLeast(0)
+    return "${TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)}분"
+}
+
 private fun ActiveOrderDetails.toRightPanelUi(): RightOrderPanelUi {
     return RightOrderPanelUi(
         orderId = orderId,
