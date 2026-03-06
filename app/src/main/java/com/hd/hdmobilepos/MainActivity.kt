@@ -1191,7 +1191,6 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             }
                         }
                     }
-                    }
                     if (showLeftScrollHint) {
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
