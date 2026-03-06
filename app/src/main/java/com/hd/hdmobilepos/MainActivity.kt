@@ -673,7 +673,14 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             Tab(
                                 selected = area.id == uiState.selectedAreaId,
                                 onClick = { vm.selectArea(area.id) },
-                                text = { Text(area.name) }
+                                text = {
+                                    val isSelected = area.id == uiState.selectedAreaId
+                                    Text(
+                                        area.name,
+                                        style = if (isSelected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                        color = if (isSelected) Color(0xFF005645) else Color(0xFF444444)
+                                    )
+                                }
                             )
                         }
                     }
@@ -909,9 +916,9 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             }
                         }
 
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("주문합계", color = Color.Gray)
-                            Text("${formatAmount(panel.orderTotalAmount)}원", color = Color(0xFF005645), fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("주문합계", color = Color.Black, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("${formatAmount(panel.orderTotalAmount)}원", color = Color(0xFFD63B3B), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -1052,12 +1059,20 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     .padding(10.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        selectedTable?.tableName ?: "선택된 테이블 없음",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            selectedTable?.tableName ?: "선택된 테이블 없음",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Filled.AccessTime, contentDescription = "식사시간", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
+                            Text(uiState.rightPanel?.elapsedLabel ?: "0분", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
+                            Icon(Icons.Filled.Person, contentDescription = "인원수", modifier = Modifier.width(18.dp).height(18.dp), tint = Color(0xFF6B4B2A))
+                            Text("${selectedTable?.capacity ?: 0}명", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4B2A))
+                        }
+                    }
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6B4B2A)),
@@ -1132,7 +1147,8 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         }
                     }
                 }
-                Text("받는 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(14.dp))
+                Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     "${formatAmount(totalAmount)}원",
                     style = MaterialTheme.typography.headlineMedium,
