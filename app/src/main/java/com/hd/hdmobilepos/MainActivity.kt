@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -1075,10 +1076,18 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
         )
     }
     val categories = remember(menusByCategory) { menusByCategory.keys.toList() }
+    val favoriteTabTitle = "즐겨찾기"
+    val displayCategories = remember(categories) { listOf(favoriteTabTitle) + categories }
     var selectedCategoryIndex by remember { mutableIntStateOf(0) }
+    var showFavoritePickerDialog by remember { mutableStateOf(false) }
 
-    val currentCategory = categories.getOrElse(selectedCategoryIndex) { categories.first() }
-    val currentMenus = menusByCategory[currentCategory].orEmpty()
+    val currentCategory = displayCategories.getOrElse(selectedCategoryIndex) { favoriteTabTitle }
+    val isFavoriteTab = currentCategory == favoriteTabTitle
+    val currentMenus = if (isFavoriteTab) {
+        listOf("즐겨찾기 추가")
+    } else {
+        menusByCategory[currentCategory].orEmpty()
+    }
     val selectedTable = uiState.tables.firstOrNull { it.tableId == uiState.selectedTableId }
     val panelItems = uiState.rightPanel?.items.orEmpty()
     val totalAmount = uiState.rightPanel?.derivedTotalAmount ?: 0
@@ -1226,6 +1235,22 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text("총 매출", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall)
+                    Text("${formatAmount(totalAmount)}", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("할인금액", color = Color(0xFF7A7A7A), style = MaterialTheme.typography.titleSmall)
+                    Text("${formatAmount(0)}", color = Color(0xFF3A76D2), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text("받을 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
                         "${formatAmount(totalAmount)}원",
@@ -1266,16 +1291,26 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     .padding(10.dp)
             ) {
                 ScrollableTabRow(selectedTabIndex = selectedCategoryIndex) {
-                    categories.forEachIndexed { index, category ->
+                    displayCategories.forEachIndexed { index, category ->
                         Tab(
                             selected = index == selectedCategoryIndex,
                             onClick = { selectedCategoryIndex = index },
                             text = {
-                                Text(
-                                    category,
-                                    style = if (index == selectedCategoryIndex) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                                    color = if (index == selectedCategoryIndex) Color(0xFF005645) else Color(0xFF444444)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    if (index == 0) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Star,
+                                            contentDescription = "즐겨찾기",
+                                            tint = Color(0xFFF2C94C),
+                                            modifier = Modifier.width(16.dp).height(16.dp)
+                                        )
+                                    }
+                                    Text(
+                                        category,
+                                        style = if (index == selectedCategoryIndex) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                        color = if (index == selectedCategoryIndex) Color(0xFF005645) else Color(0xFF444444)
+                                    )
+                                }
                             }
                         )
                     }
@@ -1290,11 +1325,16 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     gridItems(currentMenus) { menuName ->
+                        val isFavoriteAddCard = isFavoriteTab && menuName == "즐겨찾기 추가"
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(92.dp)
-                                .clickable { vm.addMenuToSelectedTable(menuName = menuName, price = 8000) },
+                                .clickable {
+                                    if (!isFavoriteAddCard) {
+                                        vm.addMenuToSelectedTable(menuName = menuName, price = 8000)
+                                    }
+                                },
                             colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5F5F5))
                         ) {
@@ -1305,9 +1345,20 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(menuName, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                                Spacer(Modifier.height(6.dp))
-                                Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                if (isFavoriteAddCard) {
+                                    FilledTonalIconButton(
+                                        onClick = { showFavoritePickerDialog = true },
+                                        colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFD8CCD2))
+                                    ) {
+                                        Icon(Icons.Filled.Add, contentDescription = "즐겨찾기 추가", tint = Color.White)
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Text("즐겨찾기 추가", fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                } else {
+                                    Text(menuName, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                    Spacer(Modifier.height(6.dp))
+                                    Text("${formatAmount(8000)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                }
                             }
                         }
                     }
@@ -1396,6 +1447,32 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
         }
     }
 
+    if (showFavoritePickerDialog) {
+        AlertDialog(
+            onDismissRequest = { showFavoritePickerDialog = false },
+            title = { Text("코너 선택") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    categories.forEachIndexed { index, category ->
+                        OutlinedButton(
+                            onClick = {
+                                selectedCategoryIndex = index + 1
+                                showFavoritePickerDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(category)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                OutlinedButton(onClick = { showFavoritePickerDialog = false }) { Text("닫기") }
+            }
+        )
+    }
+
     priceEditItem?.let { target ->
         AlertDialog(
             onDismissRequest = { priceEditItem = null },
@@ -1467,4 +1544,3 @@ private fun formatElapsed(createdAt: Long?): String {
     val elapsedMillis = (System.currentTimeMillis() - createdAt).coerceAtLeast(0)
     return "${TimeUnit.MILLISECONDS.toMinutes(elapsedMillis)}분"
 }
-
