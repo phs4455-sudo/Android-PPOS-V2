@@ -7,8 +7,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.googlefonts.GoogleFont.Provider
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import com.hd.hdmobilepos.R
 
 private val HyundaiGreen = Color(0xFF005645)
@@ -53,7 +56,19 @@ private val AppTypography = Typography().let { base ->
     )
 }
 
-private val NotoSansKrFamily = FontFamily(Font(R.font.noto_sans_kr))
+private val googleFontProvider = Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+private val notoSansKr = GoogleFont("Noto Sans KR")
+
+private val NotoSansKrFamily = FontFamily(
+    Font(googleFont = notoSansKr, fontProvider = googleFontProvider, weight = FontWeight.Normal),
+    Font(googleFont = notoSansKr, fontProvider = googleFontProvider, weight = FontWeight.Medium),
+    Font(googleFont = notoSansKr, fontProvider = googleFontProvider, weight = FontWeight.Bold)
+)
 
 private fun TextStyle.rounded(): TextStyle = copy(fontFamily = NotoSansKrFamily)
 
