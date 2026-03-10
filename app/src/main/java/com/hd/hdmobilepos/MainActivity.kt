@@ -257,6 +257,16 @@ class PaymentViewModel(initialSnapshot: PaymentOrderSnapshot) : ViewModel() {
             )
         }
     }
+
+    fun removePaymentMethod(method: PaymentMethod) {
+        _uiState.update { state ->
+            val updatedMap = state.methodAmounts.toMutableMap().apply { remove(method) }
+            state.copy(
+                methodAmounts = updatedMap,
+                receivedAmount = updatedMap.values.sum()
+            )
+        }
+    }
 }
 
 enum class UiMode {
@@ -1114,7 +1124,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(62.dp),
+                                .fillMaxHeight(),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFD8CCD2),
@@ -1138,7 +1148,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             onClick = { navController.navigate("payment/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(62.dp),
+                                .fillMaxHeight(),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                         ) {
@@ -1511,7 +1521,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { navController.navigate("payment/${selectedTable?.tableId ?: (tableId ?: -1)}") },
+                            onClick = {},
                             modifier = Modifier
                                 .weight(1f)
                                 .height(72.dp),
@@ -1533,7 +1543,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                             Text("주문 보류", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         }
                         Button(
-                            onClick = {},
+                            onClick = { navController.navigate("payment/${selectedTable?.tableId ?: (tableId ?: -1)}") },
                             modifier = Modifier
                                 .weight(1.5f)
                                 .height(72.dp),
@@ -1649,7 +1659,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             onDismissRequest = { priceEditItem = null },
             title = { Text("금액 변경") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(target.itemName)
                     OutlinedTextField(
                         value = priceInput,
@@ -1717,6 +1727,10 @@ fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel)
                 .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            val paymentLines = uiState.methodAmounts.entries
+                .filter { it.value > 0 }
+                .sortedBy { it.key.ordinal }
+
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1726,29 +1740,35 @@ fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel)
             ) {
                 Text(uiState.tableName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth()) {
-                    Text("상품명", modifier = Modifier.weight(0.5f), color = Color.Gray)
-                    Text("수량", modifier = Modifier.weight(0.2f), textAlign = TextAlign.Center, color = Color.Gray)
-                    Text("금액", modifier = Modifier.weight(0.3f), textAlign = TextAlign.End, color = Color.Gray)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("결제수단", modifier = Modifier.weight(0.45f), color = Color.Gray)
+                    Text("결제금액", modifier = Modifier.weight(0.35f), textAlign = TextAlign.End, color = Color.Gray)
+                    Spacer(modifier = Modifier.width(48.dp))
                 }
                 Divider()
                 LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(uiState.items) { item ->
+                    items(paymentLines) { line ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(item.name, modifier = Modifier.weight(0.5f), fontWeight = FontWeight.SemiBold)
-                            Text("${item.qty}", modifier = Modifier.weight(0.2f), textAlign = TextAlign.Center)
-                            Text("${formatAmount(item.price)}원", modifier = Modifier.weight(0.3f), textAlign = TextAlign.End)
+                            Text(line.key.label, modifier = Modifier.weight(0.45f), fontWeight = FontWeight.SemiBold)
+                            Text("${formatAmount(line.value)}원", modifier = Modifier.weight(0.35f), textAlign = TextAlign.End)
+                            FilledTonalIconButton(
+                                onClick = { paymentVm.removePaymentMethod(line.key) },
+                                modifier = Modifier.width(40.dp).height(32.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)
+                            ) {
+                                Icon(Icons.Filled.Close, contentDescription = "결제 취소", tint = Color(0xFFD63B3B))
+                            }
                         }
                     }
                 }
                 Divider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("총 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("${formatAmount(uiState.totalAmount)}원", style = MaterialTheme.typography.titleLarge, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
+                    Text("총 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                    Text("${formatAmount(uiState.totalAmount)}원", style = MaterialTheme.typography.titleLarge, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold, fontSize = 34.sp)
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("받은 금액", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("${formatAmount(uiState.receivedAmount)}원", style = MaterialTheme.typography.titleMedium, color = Color(0xFF005645), fontWeight = FontWeight.Bold)
+                    Text("받은 금액", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontSize = 30.sp)
+                    Text("${formatAmount(uiState.receivedAmount)}원", style = MaterialTheme.typography.titleMedium, color = Color(0xFF005645), fontWeight = FontWeight.Bold, fontSize = 30.sp)
                 }
             }
 
@@ -1758,7 +1778,7 @@ fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel)
                     .fillMaxHeight()
                     .background(Color(0xFFF8F5EE))
                     .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 PaymentMethodGrid(
                     selected = uiState.selectedMethod,
@@ -1775,7 +1795,10 @@ fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel)
                         )
                     }
                 }
-                NumericKeypad(onKeyPress = paymentVm::onKeypadPressed)
+                NumericKeypad(
+                    modifier = Modifier.weight(1f),
+                    onKeyPress = paymentVm::onKeypadPressed
+                )
                 Button(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.fillMaxWidth().height(64.dp),
@@ -1824,22 +1847,22 @@ private fun PaymentMethodGrid(
 }
 
 @Composable
-private fun NumericKeypad(onKeyPress: (String) -> Unit) {
+private fun NumericKeypad(modifier: Modifier = Modifier, onKeyPress: (String) -> Unit) {
     val keys = listOf(
         listOf("7", "8", "9", "Clear"),
         listOf("4", "5", "6", "Backspace"),
         listOf("1", "2", "3", "Enter"),
         listOf("0", "00", "만원")
     )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         keys.forEachIndexed { rowIndex, rowKeys ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowKeys.forEach { key ->
                     Button(
                         onClick = { onKeyPress(key) },
                         modifier = Modifier
                             .weight(if (rowIndex == 3 && key == "만원") 1.6f else 1f)
-                            .height(62.dp),
+                            .fillMaxHeight(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = when (key) {
