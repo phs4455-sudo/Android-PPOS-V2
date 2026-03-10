@@ -1124,7 +1124,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             onClick = { navController.navigate("food/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxHeight(),
+                                .height(62.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFFD8CCD2),
@@ -1148,7 +1148,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             onClick = { navController.navigate("payment/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxHeight(),
+                                .height(62.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC1A57A))
                         ) {
@@ -1763,12 +1763,12 @@ fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel)
                 }
                 Divider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("총 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 34.sp)
-                    Text("${formatAmount(uiState.totalAmount)}원", style = MaterialTheme.typography.titleLarge, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                    Text("총 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                    Text("${formatAmount(uiState.totalAmount)}원", style = MaterialTheme.typography.titleLarge, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold, fontSize = 26.sp)
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("받은 금액", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontSize = 30.sp)
-                    Text("${formatAmount(uiState.receivedAmount)}원", style = MaterialTheme.typography.titleMedium, color = Color(0xFF005645), fontWeight = FontWeight.Bold, fontSize = 30.sp)
+                    Text("받은 금액", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontSize = 23.sp)
+                    Text("${formatAmount(uiState.receivedAmount)}원", style = MaterialTheme.typography.titleMedium, color = Color(0xFF005645), fontWeight = FontWeight.Bold, fontSize = 23.sp)
                 }
             }
 
