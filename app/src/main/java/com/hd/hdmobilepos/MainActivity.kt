@@ -49,6 +49,12 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Loyalty
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
@@ -171,6 +177,88 @@ data class RightOrderPanelUi(
     val isTotalMismatch: Boolean
 )
 
+
+data class PaymentOrderItemUi(
+    val name: String,
+    val qty: Int,
+    val price: Int
+)
+
+data class PaymentOrderSnapshot(
+    val tableId: Long?,
+    val tableName: String,
+    val items: List<PaymentOrderItemUi>,
+    val totalAmount: Int,
+    val receivedAmount: Int
+)
+
+enum class PaymentMethod(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    CARD_MOBILE("카드/모바일", Icons.Filled.CreditCard),
+    CASH("현금", Icons.Filled.AccountBalanceWallet),
+    GIFT_CARD("상품권", Icons.Filled.CardGiftcard),
+    H_POINT("H-POINT", Icons.Filled.Loyalty),
+    PARTNER_CARD("제휴카드", Icons.Filled.CreditCard),
+    SIMPLE_PAY("간편결제", Icons.Filled.PhoneAndroid)
+}
+
+data class PaymentUiState(
+    val tableName: String = "",
+    val items: List<PaymentOrderItemUi> = emptyList(),
+    val totalAmount: Int = 0,
+    val receivedAmount: Int = 0,
+    val selectedMethod: PaymentMethod? = null,
+    val keypadInput: String = "",
+    val methodAmounts: Map<PaymentMethod, Int> = emptyMap()
+)
+
+class PaymentViewModel(initialSnapshot: PaymentOrderSnapshot) : ViewModel() {
+    private val _uiState = MutableStateFlow(
+        PaymentUiState(
+            tableName = initialSnapshot.tableName,
+            items = initialSnapshot.items,
+            totalAmount = initialSnapshot.totalAmount,
+            receivedAmount = initialSnapshot.receivedAmount
+        )
+    )
+    val uiState: StateFlow<PaymentUiState> = _uiState.asStateFlow()
+
+    fun selectPaymentMethod(method: PaymentMethod) {
+        _uiState.update { it.copy(selectedMethod = method, keypadInput = "") }
+    }
+
+    fun onKeypadPressed(key: String) {
+        when (key) {
+            "Clear" -> _uiState.update { it.copy(keypadInput = "") }
+            "Backspace" -> _uiState.update { state ->
+                state.copy(keypadInput = state.keypadInput.dropLast(1))
+            }
+            "만원" -> _uiState.update { state ->
+                val next = if (state.keypadInput.isBlank()) "10000" else state.keypadInput + "0000"
+                state.copy(keypadInput = next)
+            }
+            "Enter" -> applyEnteredAmount()
+            else -> {
+                if (key.all { it.isDigit() }) {
+                    _uiState.update { state -> state.copy(keypadInput = state.keypadInput + key) }
+                }
+            }
+        }
+    }
+
+    private fun applyEnteredAmount() {
+        _uiState.update { state ->
+            val method = state.selectedMethod ?: return@update state
+            val amount = state.keypadInput.toIntOrNull() ?: 0
+            val updatedMap = state.methodAmounts.toMutableMap().apply { this[method] = amount }
+            state.copy(
+                methodAmounts = updatedMap,
+                receivedAmount = updatedMap.values.sum(),
+                keypadInput = ""
+            )
+        }
+    }
+}
+
 enum class UiMode {
     NORMAL,
     SELECT_TARGET_FOR_MOVE,
@@ -248,6 +336,23 @@ class MainViewModel(private val repository: PosRepository) : ViewModel() {
             )
         }
         observeRightPanel(tableId)
+    }
+
+
+    fun buildPaymentSnapshot(tableId: Long?): PaymentOrderSnapshot {
+        val state = _uiState.value
+        val resolvedTableId = tableId ?: state.selectedTableId
+        val table = state.tables.firstOrNull { it.tableId == resolvedTableId }
+        val panel = state.rightPanel
+        val items = panel?.items?.map { PaymentOrderItemUi(name = it.itemName, qty = it.qty, price = it.lineTotal) }.orEmpty()
+        val total = panel?.derivedTotalAmount ?: 0
+        return PaymentOrderSnapshot(
+            tableId = resolvedTableId,
+            tableName = table?.tableName ?: "선택된 테이블 없음",
+            items = items,
+            totalAmount = total,
+            receivedAmount = total
+        )
     }
 
     fun startMoveMode() {
@@ -595,6 +700,18 @@ fun MainNavHost(vm: MainViewModel) {
         composable("food/{tableId}") { backStackEntry ->
             val tableId = backStackEntry.arguments?.getString("tableId")?.toLongOrNull()
             FoodCourtScreen(navController = navController, vm = vm, tableId = tableId)
+        }
+        composable("payment/{tableId}") { backStackEntry ->
+            val tableId = backStackEntry.arguments?.getString("tableId")?.toLongOrNull()
+            val snapshot = remember(tableId, vm.uiState.collectAsState().value.rightPanel) { vm.buildPaymentSnapshot(tableId) }
+            val paymentVm: PaymentViewModel = viewModel(
+                key = "payment_${tableId ?: -1}",
+                factory = object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T = PaymentViewModel(snapshot) as T
+                }
+            )
+            PaymentScreen(navController = navController, paymentVm = paymentVm)
         }
     }
 }
@@ -1018,7 +1135,7 @@ fun RestaurantScreen(navController: NavHostController, vm: MainViewModel) {
                             )
                         }
                         Button(
-                            onClick = { /* TODO: 결제 처리 로직 연결 */ },
+                            onClick = { navController.navigate("payment/${selectedTable.tableId}") },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(62.dp),
@@ -1394,7 +1511,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = {},
+                            onClick = { navController.navigate("payment/${selectedTable?.tableId ?: (tableId ?: -1)}") },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(72.dp),
@@ -1582,6 +1699,168 @@ private fun statusChipColors(status: String): Pair<Color, Color> = when (status)
     "DISABLED" -> Color(0xFFE6E6E6) to Color(0xFF8A8A8A)
     "MERGED" -> Color(0xFFEFE3D0) to Color(0xFF6B4B2A)
     else -> Color(0xFFE2F3EC) to Color(0xFF005645)
+}
+
+
+
+@Composable
+fun PaymentScreen(navController: NavHostController, paymentVm: PaymentViewModel) {
+    val uiState by paymentVm.uiState.collectAsState()
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { PosTopBar() }
+    ) { paddingValues ->
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color.White)
+                    .padding(12.dp)
+            ) {
+                Text(uiState.tableName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    Text("상품명", modifier = Modifier.weight(0.5f), color = Color.Gray)
+                    Text("수량", modifier = Modifier.weight(0.2f), textAlign = TextAlign.Center, color = Color.Gray)
+                    Text("금액", modifier = Modifier.weight(0.3f), textAlign = TextAlign.End, color = Color.Gray)
+                }
+                Divider()
+                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(uiState.items) { item ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(item.name, modifier = Modifier.weight(0.5f), fontWeight = FontWeight.SemiBold)
+                            Text("${item.qty}", modifier = Modifier.weight(0.2f), textAlign = TextAlign.Center)
+                            Text("${formatAmount(item.price)}원", modifier = Modifier.weight(0.3f), textAlign = TextAlign.End)
+                        }
+                    }
+                }
+                Divider()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("총 금액", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("${formatAmount(uiState.totalAmount)}원", style = MaterialTheme.typography.titleLarge, color = Color(0xFFD63B3B), fontWeight = FontWeight.Bold)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("받은 금액", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${formatAmount(uiState.receivedAmount)}원", style = MaterialTheme.typography.titleMedium, color = Color(0xFF005645), fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .fillMaxHeight()
+                    .background(Color(0xFFF8F5EE))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PaymentMethodGrid(
+                    selected = uiState.selectedMethod,
+                    methodAmounts = uiState.methodAmounts,
+                    onSelect = paymentVm::selectPaymentMethod
+                )
+                Surface(shape = RoundedCornerShape(12.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("선택 결제수단: ${uiState.selectedMethod?.label ?: "선택 없음"}", color = Color.Gray)
+                        Text(
+                            if (uiState.keypadInput.isBlank()) "입력 금액: 0원" else "입력 금액: ${formatAmount(uiState.keypadInput.toIntOrNull() ?: 0)}원",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                NumericKeypad(onKeyPress = paymentVm::onKeypadPressed)
+                Button(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.fillMaxWidth().height(64.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("결제 화면 닫기", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodGrid(
+    selected: PaymentMethod?,
+    methodAmounts: Map<PaymentMethod, Int>,
+    onSelect: (PaymentMethod) -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxWidth().height(280.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        gridItems(PaymentMethod.values().toList()) { method ->
+            val isSelected = selected == method
+            val amount = methodAmounts[method] ?: 0
+            Button(
+                onClick = { onSelect(method) },
+                modifier = Modifier.fillMaxWidth().height(86.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) Color(0xFF005645) else Color.White,
+                    contentColor = if (isSelected) Color.White else Color.Black
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF005645) else Color(0xFFCCCCCC))
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(method.icon, contentDescription = method.label)
+                    Text(method.label, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                    if (amount > 0) Text("${formatAmount(amount)}원", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NumericKeypad(onKeyPress: (String) -> Unit) {
+    val keys = listOf(
+        listOf("7", "8", "9", "Clear"),
+        listOf("4", "5", "6", "Backspace"),
+        listOf("1", "2", "3", "Enter"),
+        listOf("0", "00", "만원")
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        keys.forEachIndexed { rowIndex, rowKeys ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowKeys.forEach { key ->
+                    Button(
+                        onClick = { onKeyPress(key) },
+                        modifier = Modifier
+                            .weight(if (rowIndex == 3 && key == "만원") 1.6f else 1f)
+                            .height(62.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = when (key) {
+                                "Enter" -> Color(0xFF005645)
+                                "Clear", "Backspace" -> Color(0xFF6C8EA1)
+                                else -> Color.White
+                            },
+                            contentColor = if (key == "Enter" || key == "Clear" || key == "Backspace") Color.White else Color.Black
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD0D0D0))
+                    ) {
+                        if (key == "Backspace") {
+                            Icon(Icons.Filled.Backspace, contentDescription = key)
+                        } else {
+                            Text(key, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 private fun formatTableStatus(status: String): String = when (status) {
