@@ -1659,7 +1659,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
             onDismissRequest = { priceEditItem = null },
             title = { Text("금액 변경") },
             text = {
-                Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(target.itemName)
                     OutlinedTextField(
                         value = priceInput,
