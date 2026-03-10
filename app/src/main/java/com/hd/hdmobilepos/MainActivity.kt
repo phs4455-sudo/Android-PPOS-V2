@@ -94,6 +94,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -1083,6 +1084,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
     val displayCategories = remember(categories) { listOf(favoriteTabTitle) + categories }
     var selectedCategoryIndex by remember { mutableIntStateOf(0) }
     var showFavoritePickerDialog by remember { mutableStateOf(false) }
+    var selectedFavoriteDialogCategoryIndex by remember { mutableIntStateOf(0) }
     val favoriteMenus = remember { mutableStateListOf<String>() }
     val selectedFavoriteCandidates = remember { mutableStateListOf<String>() }
     val allMenusWithCategory = remember(menusByCategory) {
@@ -1243,16 +1245,16 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("총 매출", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall)
-                    Text("${formatAmount(totalAmount)}", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall)
+                    Text("총 매출", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall, fontSize = 18.sp)
+                    Text("${formatAmount(totalAmount)}", color = Color(0xFF8A8A8A), style = MaterialTheme.typography.titleSmall, fontSize = 18.sp)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("할인금액", color = Color(0xFF7A7A7A), style = MaterialTheme.typography.titleSmall)
-                    Text("${formatAmount(0)}", color = Color(0xFF3A76D2), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text("할인금액", color = Color(0xFF7A7A7A), style = MaterialTheme.typography.titleSmall, fontSize = 18.sp)
+                    Text("${formatAmount(0)}", color = Color(0xFF3A76D2), style = MaterialTheme.typography.titleSmall, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1310,7 +1312,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                             imageVector = Icons.Filled.Star,
                                             contentDescription = "즐겨찾기",
                                             tint = Color(0xFFF2C94C),
-                                            modifier = Modifier.width(16.dp).height(16.dp)
+                                            modifier = Modifier.width(24.dp).height(24.dp)
                                         )
                                     }
                                     Text(
@@ -1341,7 +1343,10 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                 .clickable {
                                     if (isFavoriteAddCard) {
                                         selectedFavoriteCandidates.clear()
-                                        selectedFavoriteCandidates.addAll(favoriteMenus)
+                                        favoriteMenus.forEach { favoriteMenu ->
+                                            allMenusWithCategory.firstOrNull { it.endsWith("|$favoriteMenu") }?.let { selectedFavoriteCandidates.add(it) }
+                                        }
+                                        selectedFavoriteDialogCategoryIndex = 0
                                         showFavoritePickerDialog = true
                                     } else {
                                         vm.addMenuToSelectedTable(menuName = menuName, price = 8000)
@@ -1361,7 +1366,10 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                                     FilledTonalIconButton(
                                         onClick = {
                                             selectedFavoriteCandidates.clear()
-                                            selectedFavoriteCandidates.addAll(favoriteMenus)
+                                            favoriteMenus.forEach { favoriteMenu ->
+                                                allMenusWithCategory.firstOrNull { it.endsWith("|$favoriteMenu") }?.let { selectedFavoriteCandidates.add(it) }
+                                            }
+                                            selectedFavoriteDialogCategoryIndex = 0
                                             showFavoritePickerDialog = true
                                         },
                                         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFD8CCD2))
@@ -1462,38 +1470,49 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
     }
 
     if (showFavoritePickerDialog) {
+        val dialogCategory = categories.getOrElse(selectedFavoriteDialogCategoryIndex) { categories.firstOrNull().orEmpty() }
+        val dialogMenus = menusByCategory[dialogCategory].orEmpty()
         AlertDialog(
             onDismissRequest = { showFavoritePickerDialog = false },
             title = { Text("즐겨찾기 상품 선택") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    allMenusWithCategory.forEach { entry ->
-                        val category = entry.substringBefore("|")
-                        val menu = entry.substringAfter("|")
-                        val checked = entry in selectedFavoriteCandidates
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (checked) selectedFavoriteCandidates.remove(entry) else selectedFavoriteCandidates.add(entry)
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = checked,
-                                onCheckedChange = { isChecked ->
-                                    if (isChecked) selectedFavoriteCandidates.add(entry) else selectedFavoriteCandidates.remove(entry)
-                                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ScrollableTabRow(selectedTabIndex = selectedFavoriteDialogCategoryIndex) {
+                        categories.forEachIndexed { index, category ->
+                            Tab(
+                                selected = index == selectedFavoriteDialogCategoryIndex,
+                                onClick = { selectedFavoriteDialogCategoryIndex = index },
+                                text = { Text(category) }
                             )
-                            Text("$category · $menu")
+                        }
+                    }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(dialogMenus) { menu ->
+                            val entry = "$dialogCategory|$menu"
+                            val checked = entry in selectedFavoriteCandidates
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (checked) selectedFavoriteCandidates.remove(entry) else selectedFavoriteCandidates.add(entry)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { isChecked ->
+                                        if (isChecked) selectedFavoriteCandidates.add(entry) else selectedFavoriteCandidates.remove(entry)
+                                    }
+                                )
+                                Text(menu)
+                            }
                         }
                     }
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    val chosenMenus = allMenusWithCategory
-                        .filter { it in selectedFavoriteCandidates }
+                    val chosenMenus = selectedFavoriteCandidates
                         .map { it.substringAfter("|") }
                         .distinct()
                     favoriteMenus.clear()
