@@ -109,6 +109,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -1352,7 +1353,10 @@ private fun ProductRegisterLeftPane(
                     Text("받을 금액", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                     Text("${formatAmount(uiState.receivedAmount)}원", fontWeight = FontWeight.ExtraBold, color = Color(0xFFD32F2F), fontSize = 24.sp)
                 }
-                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) { Text("뒤로가기", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기", modifier = Modifier.padding(end = 6.dp))
+                    Text("뒤로가기", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -1367,21 +1371,32 @@ private fun ProductRegisterRightPane(
     modifier: Modifier = Modifier
 ) {
     var input by remember { mutableStateOf("") }
-    var showManualKeypad by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
     Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Surface(shape = RoundedCornerShape(16.dp), color = Color.White, modifier = Modifier.weight(1f)) {
             Column(Modifier.fillMaxSize().padding(10.dp)) {
                 ScrollableTabRow(selectedTabIndex = uiState.categories.indexOf(uiState.selectedCategory).coerceAtLeast(0)) {
-                    uiState.categories.forEach { category ->
+                    uiState.categories.forEachIndexed { index, category ->
                         Tab(
                             selected = uiState.selectedCategory == category,
                             onClick = { onSelectCategory(category) },
                             text = {
-                                Text(
-                                    text = category,
-                                    color = if (uiState.selectedCategory == category) Color(0xFF005645) else Color(0xFF666666),
-                                    fontWeight = if (uiState.selectedCategory == category) FontWeight.Bold else FontWeight.Normal
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    if (index == 0) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Star,
+                                            contentDescription = "즐겨찾기",
+                                            tint = Color(0xFFF2C94C),
+                                            modifier = Modifier.width(24.dp).height(24.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = category,
+                                        style = if (uiState.selectedCategory == category) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                        color = if (uiState.selectedCategory == category) Color(0xFF005645) else Color(0xFF444444)
+                                    )
+                                }
                             }
                         )
                     }
@@ -1389,24 +1404,44 @@ private fun ProductRegisterRightPane(
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = input,
-                        onValueChange = {},
-                        readOnly = true,
+                        onValueChange = { changed ->
+                            input = changed.filter { it.isDigit() }
+                        },
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { showManualKeypad = true },
+                            .focusRequester(focusRequester),
                         label = { Text("수기 입력") },
-                        textStyle = MaterialTheme.typography.titleMedium
+                        textStyle = MaterialTheme.typography.titleMedium,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                onScanSubmit(input)
+                                input = ""
+                                keyboardController?.hide()
+                            }
+                        )
                     )
                 }
                 LazyVerticalGrid(columns = GridCells.Fixed(4), contentPadding = PaddingValues(4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                     gridItems(uiState.categoryProducts) { product ->
                         Card(
-                            modifier = Modifier.fillMaxWidth().height(112.dp).clickable { onAddProduct(product) },
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(92.dp)
+                                .clickable { onAddProduct(product) },
+                            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5F5F5))
                         ) {
-                            Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                                Text(product.name, fontWeight = FontWeight.Bold)
-                                Text("${formatAmount(product.price)}원", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold)
+                            Column(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(product.name, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                Spacer(Modifier.height(6.dp))
+                                Text("${formatAmount(product.price)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                             }
                         }
                     }
@@ -1424,18 +1459,6 @@ private fun ProductRegisterRightPane(
                 ProductRegisterActionButton("H.Point 사용", Icons.Filled.Stars, Color(0xFF005645), Modifier.weight(1f))
                 ProductRegisterActionButton("카드/모바일", Icons.Filled.CreditCard, Color(0xFFC1A57A), Modifier.weight(1f))
             }
-        }
-        if (showManualKeypad) {
-            ManualBarcodeKeypad(
-                value = input,
-                onValueChange = { input = it },
-                onConfirm = {
-                    onScanSubmit(input)
-                    input = ""
-                    showManualKeypad = false
-                },
-                onClose = { showManualKeypad = false }
-            )
         }
     }
 }
