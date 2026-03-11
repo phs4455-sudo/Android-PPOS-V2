@@ -57,8 +57,13 @@ import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Loyalty
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material.icons.filled.Redeem
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
@@ -1303,11 +1308,11 @@ private fun ProductRegisterLeftPane(
         Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), color = Color.White) {
             Column(Modifier.fillMaxSize().padding(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("No.", modifier = Modifier.width(40.dp), fontWeight = FontWeight.SemiBold)
-                    Text("상품", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold)
-                    Text("단가", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, fontWeight = FontWeight.SemiBold)
-                    Text("수량", modifier = Modifier.weight(0.9f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
-                    Text("금액", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, fontWeight = FontWeight.SemiBold)
+                    Text("No.", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("상품", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("단가", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("수량", modifier = Modifier.weight(0.9f), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("금액", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(26.dp))
                 }
                 Divider(Modifier.padding(vertical = 8.dp))
@@ -1317,25 +1322,25 @@ private fun ProductRegisterLeftPane(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Text("$index", modifier = Modifier.width(40.dp))
                             Column(modifier = Modifier.weight(1.2f)) {
-                                Text(cartItem.product.name, fontWeight = FontWeight.SemiBold)
+                                Text(cartItem.product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                                 Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
                             }
-                            Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End)
+                            Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
                             Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                                FilledTonalIconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
-                                Text("${cartItem.qty}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-                                FilledTonalIconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
+                                androidx.compose.material3.IconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                Text("${cartItem.qty}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                androidx.compose.material3.IconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
                             }
-                            Text("${formatAmount(cartItem.lineAmount)}", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End)
-                            FilledTonalIconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
+                            Text("${formatAmount(cartItem.lineAmount)}", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
+                            androidx.compose.material3.IconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
                         }
                         Divider()
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("행사적용") }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("주문 보류") }
-                    OutlinedButton(onClick = onClearAll, modifier = Modifier.weight(1f).height(54.dp)) { Text("전체취소", color = Color(0xFFC62828)) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("행사적용", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("주문 보류", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(onClick = onClearAll, modifier = Modifier.weight(1f).height(54.dp)) { Text("전체취소", color = Color(0xFFC62828), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -1347,7 +1352,7 @@ private fun ProductRegisterLeftPane(
                     Text("받을 금액", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                     Text("${formatAmount(uiState.receivedAmount)}원", fontWeight = FontWeight.ExtraBold, color = Color(0xFFD32F2F), fontSize = 24.sp)
                 }
-                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) { Text("뒤로가기") }
+                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) { Text("뒤로가기", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -1362,6 +1367,7 @@ private fun ProductRegisterRightPane(
     modifier: Modifier = Modifier
 ) {
     var input by remember { mutableStateOf("") }
+    var showManualKeypad by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Surface(shape = RoundedCornerShape(16.dp), color = Color.White, modifier = Modifier.weight(1f)) {
             Column(Modifier.fillMaxSize().padding(10.dp)) {
@@ -1381,8 +1387,16 @@ private fun ProductRegisterRightPane(
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = input, onValueChange = { input = it }, modifier = Modifier.weight(1f), label = { Text("바코드 입력") })
-                    Button(onClick = { onScanSubmit(input) }, modifier = Modifier.height(56.dp)) { Text("스캔추가") }
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { showManualKeypad = true },
+                        label = { Text("수기 입력") },
+                        textStyle = MaterialTheme.typography.titleMedium
+                    )
                 }
                 LazyVerticalGrid(columns = GridCells.Fixed(4), contentPadding = PaddingValues(4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
                     gridItems(uiState.categoryProducts) { product ->
@@ -1401,28 +1415,105 @@ private fun ProductRegisterRightPane(
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProductRegisterActionButton("장바구니할인", Color(0xFF6B7D8A), Modifier.weight(1f))
-                ProductRegisterActionButton("상품권", Color(0xFF005645), Modifier.weight(1f))
-                ProductRegisterActionButton("현금", Color(0xFFC1A57A), Modifier.weight(1f), textColor = Color(0xFF1A1A1A))
+                ProductRegisterActionButton("장바구니할인", Icons.Filled.LocalOffer, Color(0xFF6B7D8A), Modifier.weight(1f))
+                ProductRegisterActionButton("상품권", Icons.Filled.Redeem, Color(0xFF005645), Modifier.weight(1f))
+                ProductRegisterActionButton("현금", Icons.Filled.Savings, Color(0xFFC1A57A), Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProductRegisterActionButton("기타시재", Color(0xFF6B7D8A), Modifier.weight(1f))
-                ProductRegisterActionButton("H.Point 사용", Color(0xFF005645), Modifier.weight(1f))
-                ProductRegisterActionButton("카드/모바일", Color(0xFFC1A57A), Modifier.weight(1f), textColor = Color(0xFF1A1A1A))
+                ProductRegisterActionButton("기타시재", Icons.Filled.PointOfSale, Color(0xFF6B7D8A), Modifier.weight(1f))
+                ProductRegisterActionButton("H.Point 사용", Icons.Filled.Stars, Color(0xFF005645), Modifier.weight(1f))
+                ProductRegisterActionButton("카드/모바일", Icons.Filled.CreditCard, Color(0xFFC1A57A), Modifier.weight(1f))
             }
+        }
+        if (showManualKeypad) {
+            ManualBarcodeKeypad(
+                value = input,
+                onValueChange = { input = it },
+                onConfirm = {
+                    onScanSubmit(input)
+                    input = ""
+                    showManualKeypad = false
+                },
+                onClose = { showManualKeypad = false }
+            )
         }
     }
 }
 
 @Composable
-private fun ProductRegisterActionButton(label: String, color: Color, modifier: Modifier, textColor: Color = Color.White) {
+private fun ProductRegisterActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier
+) {
     Button(
         onClick = {},
-        modifier = modifier.height(74.dp),
+        modifier = modifier.height(89.dp),
         shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = textColor)
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)
     ) {
-        Text(label, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 6.dp))
+        Text(label, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium, color = Color.White)
+    }
+}
+
+@Composable
+private fun ManualBarcodeKeypad(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onClose: () -> Unit
+) {
+    Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFF9F5EE), tonalElevation = 1.dp) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text("수기 입력", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onClose) { Text("닫기", fontWeight = FontWeight.Bold) }
+            }
+            Surface(shape = RoundedCornerShape(10.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = if (value.isBlank()) "바코드 숫자를 입력하세요" else value,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (value.isBlank()) Color.Gray else Color.Black
+                )
+            }
+            val keypadRows = listOf(
+                listOf("7", "8", "9"),
+                listOf("4", "5", "6"),
+                listOf("1", "2", "3"),
+                listOf("초기화", "0", "입력")
+            )
+            keypadRows.forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    row.forEach { key ->
+                        Button(
+                            onClick = {
+                                when (key) {
+                                    "초기화" -> onValueChange("")
+                                    "입력" -> onConfirm()
+                                    else -> onValueChange(value + key)
+                                }
+                            },
+                            modifier = Modifier.weight(1f).height(64.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (key == "입력") Color(0xFF005645) else Color.White,
+                                contentColor = if (key == "입력") Color.White else Color(0xFF2F2F2F)
+                            )
+                        ) {
+                            Text(key, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
