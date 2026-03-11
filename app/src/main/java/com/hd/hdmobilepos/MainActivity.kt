@@ -128,8 +128,11 @@ import com.hd.hdmobilepos.data.PosRepository
 import com.hd.hdmobilepos.data.TableSummary
 import com.hd.hdmobilepos.ui.theme.PPOSTheme
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
@@ -773,7 +776,6 @@ fun MainNavHost(vm: MainViewModel) {
         composable(ROUTE_PRODUCT_REGISTER_WITH_ARG) { backStackEntry ->
             val barcode = backStackEntry.arguments?.getString(ARG_BARCODE)
             ProductRegisterScreen(
-                navController = navController,
                 barcode = barcode,
                 onClose = { navController.popBackStack() }
             )
@@ -1058,30 +1060,369 @@ private fun SuperUtilityBar(labels: List<String>) {
 
 @Composable
 fun ProductRegisterScreen(
-    navController: NavHostController,
     barcode: String?,
     onClose: () -> Unit
 ) {
-    Scaffold(topBar = { PosTopBar() }, containerColor = Color(0xFFF6F2E9)) { paddingValues ->
-        Column(
+    val productRegisterVm: ProductRegisterViewModel = viewModel(
+        key = "product_register_${barcode ?: "default"}",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val lookupGateway = InMemoryProductLookupGateway()
+                val scannerGateway = NoOpBarcodeScannerGateway()
+                return ProductRegisterViewModel(
+                    productLookupGateway = lookupGateway,
+                    salesCartGateway = InMemorySalesCartGateway(),
+                    barcodeScannerGateway = scannerGateway,
+                    initialBarcode = barcode
+                ) as T
+            }
+        }
+    )
+    val uiState by productRegisterVm.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        productRegisterVm.events.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    Scaffold(
+        topBar = { PosTopBar() },
+        containerColor = Color(0xFFF6F2E9),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("판매용 상품등록", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color(0xFF005645))
-            Text(
-                text = if (barcode.isNullOrBlank()) "바코드 없이 진입했습니다." else "스캔 바코드: $barcode",
-                style = MaterialTheme.typography.titleLarge
+            ProductRegisterLeftPane(
+                uiState = uiState,
+                onDecrease = productRegisterVm::decreaseQty,
+                onIncrease = productRegisterVm::increaseQty,
+                onDelete = productRegisterVm::deleteItem,
+                onClearAll = productRegisterVm::clearCart,
+                onClose = onClose,
+                modifier = Modifier.weight(0.45f)
             )
-            Button(onClick = onClose, modifier = Modifier.width(220.dp).height(56.dp), shape = RoundedCornerShape(14.dp)) {
-                Text("슈퍼 홈으로")
-            }
-            Button(onClick = { navController.navigate(ROUTE_RESTAURANT) }, modifier = Modifier.width(220.dp).height(56.dp), shape = RoundedCornerShape(14.dp)) {
-                Text("레스토랑 화면")
+            ProductRegisterRightPane(
+                uiState = uiState,
+                onSelectCategory = productRegisterVm::selectCategory,
+                onAddProduct = { productRegisterVm.addProduct(it.id) },
+                onScanSubmit = productRegisterVm::simulateScan,
+                modifier = Modifier.weight(0.55f)
+            )
+        }
+    }
+}
+
+data class ProductItemUi(
+    val id: String,
+    val name: String,
+    val price: Int,
+    val category: String,
+    val barcode: String
+)
+
+data class CartItemUi(
+    val product: ProductItemUi,
+    val qty: Int
+) {
+    val lineAmount: Int get() = product.price * qty
+}
+
+data class ProductRegisterUiState(
+    val categories: List<String> = listOf("즐겨찾기", "채소", "과일", "생수", "종량제 봉투", "기타"),
+    val selectedCategory: String = "즐겨찾기",
+    val categoryProducts: List<ProductItemUi> = emptyList(),
+    val cartItems: List<CartItemUi> = emptyList(),
+    val totalAmount: Int = 0,
+    val discountAmount: Int = 0,
+    val receivedAmount: Int = 0,
+    val barcodeInputState: String = ""
+)
+
+interface ProductLookupGateway {
+    suspend fun findByBarcode(barcode: String): ProductItemUi?
+    fun productsByCategory(category: String): List<ProductItemUi>
+}
+
+interface SalesCartGateway {
+    suspend fun mergeItem(current: List<CartItemUi>, product: ProductItemUi): List<CartItemUi>
+}
+
+interface BarcodeScannerGateway {
+    val scannedBarcodes: StateFlow<String?>
+}
+
+class InMemorySalesCartGateway : SalesCartGateway {
+    override suspend fun mergeItem(current: List<CartItemUi>, product: ProductItemUi): List<CartItemUi> {
+        val index = current.indexOfFirst { it.product.id == product.id }
+        if (index < 0) return current + CartItemUi(product = product, qty = 1)
+        return current.mapIndexed { i, cartItem ->
+            if (i == index) cartItem.copy(qty = cartItem.qty + 1) else cartItem
+        }
+    }
+}
+
+class NoOpBarcodeScannerGateway : BarcodeScannerGateway {
+    override val scannedBarcodes: StateFlow<String?> = MutableStateFlow(null)
+}
+
+class InMemoryProductLookupGateway : ProductLookupGateway {
+    private val products = listOf(
+        ProductItemUi("fav_apple", "사과", 2300, "즐겨찾기", "880000100001"),
+        ProductItemUi("fav_water", "생수 2L", 1100, "즐겨찾기", "880000100002"),
+        ProductItemUi("veg_cabbage", "양배추", 3800, "채소", "880000100101"),
+        ProductItemUi("veg_onion", "양파 1망", 4500, "채소", "880000100102"),
+        ProductItemUi("fruit_banana", "바나나", 4200, "과일", "880000100201"),
+        ProductItemUi("fruit_orange", "오렌지", 5500, "과일", "880000100202"),
+        ProductItemUi("water_small", "생수 500ml", 700, "생수", "880000100301"),
+        ProductItemUi("water_box", "생수 20입", 9800, "생수", "880000100302"),
+        ProductItemUi("bag_5l", "종량제봉투 5L", 500, "종량제 봉투", "880000100401"),
+        ProductItemUi("bag_10l", "종량제봉투 10L", 900, "종량제 봉투", "880000100402"),
+        ProductItemUi("etc_battery", "건전지 AA 2입", 2000, "기타", "880000100501"),
+        ProductItemUi("etc_tissue", "물티슈", 1800, "기타", "880000100502")
+    )
+
+    override suspend fun findByBarcode(barcode: String): ProductItemUi? =
+        products.firstOrNull { it.barcode == barcode }
+
+    override fun productsByCategory(category: String): List<ProductItemUi> =
+        products.filter { it.category == category || (category == "즐겨찾기" && it.category == "즐겨찾기") }
+}
+
+class ProductRegisterViewModel(
+    private val productLookupGateway: ProductLookupGateway,
+    private val salesCartGateway: SalesCartGateway,
+    barcodeScannerGateway: BarcodeScannerGateway,
+    initialBarcode: String?
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(ProductRegisterUiState())
+    val uiState: StateFlow<ProductRegisterUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<String>()
+    val events: SharedFlow<String> = _events.asSharedFlow()
+
+    init {
+        selectCategory(_uiState.value.selectedCategory)
+        if (!initialBarcode.isNullOrBlank()) {
+            processBarcode(initialBarcode)
+        }
+        viewModelScope.launch {
+            barcodeScannerGateway.scannedBarcodes.collectLatest { scanned ->
+                if (!scanned.isNullOrBlank()) {
+                    processBarcode(scanned)
+                }
             }
         }
+    }
+
+    fun selectCategory(category: String) {
+        _uiState.update {
+            it.copy(
+                selectedCategory = category,
+                categoryProducts = productLookupGateway.productsByCategory(category)
+            )
+        }
+    }
+
+    fun addProduct(productId: String) {
+        val product = _uiState.value.categoryProducts.firstOrNull { it.id == productId } ?: return
+        viewModelScope.launch {
+            val nextCart = salesCartGateway.mergeItem(_uiState.value.cartItems, product)
+            updateCart(nextCart)
+        }
+    }
+
+    fun increaseQty(productId: String) = addProduct(productId)
+
+    fun decreaseQty(productId: String) {
+        val next = _uiState.value.cartItems.mapNotNull {
+            if (it.product.id != productId) it
+            else if (it.qty <= 1) null else it.copy(qty = it.qty - 1)
+        }
+        updateCart(next)
+    }
+
+    fun deleteItem(productId: String) {
+        updateCart(_uiState.value.cartItems.filterNot { it.product.id == productId })
+    }
+
+    fun clearCart() {
+        updateCart(emptyList())
+    }
+
+    fun simulateScan(barcode: String) {
+        _uiState.update { it.copy(barcodeInputState = "") }
+        processBarcode(barcode.trim())
+    }
+
+    private fun processBarcode(barcode: String) {
+        if (barcode.isBlank()) return
+        viewModelScope.launch {
+            val product = productLookupGateway.findByBarcode(barcode)
+            if (product == null) {
+                _events.emit("등록되지 않은 바코드입니다: $barcode")
+                return@launch
+            }
+            val nextCart = salesCartGateway.mergeItem(_uiState.value.cartItems, product)
+            updateCart(nextCart)
+            _events.emit("${product.name} 상품이 추가되었습니다.")
+        }
+    }
+
+    private fun updateCart(cartItems: List<CartItemUi>) {
+        val total = cartItems.sumOf { it.lineAmount }
+        _uiState.update {
+            it.copy(
+                cartItems = cartItems,
+                totalAmount = total,
+                discountAmount = 0,
+                receivedAmount = total
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductRegisterLeftPane(
+    uiState: ProductRegisterUiState,
+    onDecrease: (String) -> Unit,
+    onIncrease: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onClearAll: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), color = Color.White) {
+            Column(Modifier.fillMaxSize().padding(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("No.", modifier = Modifier.width(40.dp), fontWeight = FontWeight.SemiBold)
+                    Text("상품", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold)
+                    Text("단가", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, fontWeight = FontWeight.SemiBold)
+                    Text("수량", modifier = Modifier.weight(0.9f), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+                    Text("금액", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(26.dp))
+                }
+                Divider(Modifier.padding(vertical = 8.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    items(uiState.cartItems) { cartItem ->
+                        val index = uiState.cartItems.indexOf(cartItem) + 1
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text("$index", modifier = Modifier.width(40.dp))
+                            Column(modifier = Modifier.weight(1.2f)) {
+                                Text(cartItem.product.name, fontWeight = FontWeight.SemiBold)
+                                Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
+                            }
+                            Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End)
+                            Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                FilledTonalIconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                Text("${cartItem.qty}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                FilledTonalIconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
+                            }
+                            Text("${formatAmount(cartItem.lineAmount)}", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End)
+                            FilledTonalIconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
+                        }
+                        Divider()
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("행사적용") }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("주문 보류") }
+                    OutlinedButton(onClick = onClearAll, modifier = Modifier.weight(1f).height(54.dp)) { Text("전체취소", color = Color(0xFFC62828)) }
+                }
+            }
+        }
+        Surface(shape = RoundedCornerShape(16.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SummaryLine("총 매출", "${formatAmount(uiState.totalAmount)}원")
+                SummaryLine("할인금액", "${formatAmount(uiState.discountAmount)}원")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("받을 금액", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                    Text("${formatAmount(uiState.receivedAmount)}원", fontWeight = FontWeight.ExtraBold, color = Color(0xFFD32F2F), fontSize = 24.sp)
+                }
+                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) { Text("뒤로가기") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductRegisterRightPane(
+    uiState: ProductRegisterUiState,
+    onSelectCategory: (String) -> Unit,
+    onAddProduct: (ProductItemUi) -> Unit,
+    onScanSubmit: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var input by remember { mutableStateOf("") }
+    Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(shape = RoundedCornerShape(16.dp), color = Color.White, modifier = Modifier.weight(1f)) {
+            Column(Modifier.fillMaxSize().padding(10.dp)) {
+                ScrollableTabRow(selectedTabIndex = uiState.categories.indexOf(uiState.selectedCategory).coerceAtLeast(0)) {
+                    uiState.categories.forEach { category ->
+                        Tab(
+                            selected = uiState.selectedCategory == category,
+                            onClick = { onSelectCategory(category) },
+                            text = {
+                                Text(
+                                    text = category,
+                                    color = if (uiState.selectedCategory == category) Color(0xFF005645) else Color(0xFF666666),
+                                    fontWeight = if (uiState.selectedCategory == category) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = input, onValueChange = { input = it }, modifier = Modifier.weight(1f), label = { Text("바코드 입력") })
+                    Button(onClick = { onScanSubmit(input) }, modifier = Modifier.height(56.dp)) { Text("스캔추가") }
+                }
+                LazyVerticalGrid(columns = GridCells.Fixed(4), contentPadding = PaddingValues(4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    gridItems(uiState.categoryProducts) { product ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().height(112.dp).clickable { onAddProduct(product) },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                Text(product.name, fontWeight = FontWeight.Bold)
+                                Text("${formatAmount(product.price)}원", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                ProductRegisterActionButton("장바구니할인", Color(0xFF6B7D8A), Modifier.weight(1f))
+                ProductRegisterActionButton("상품권", Color(0xFF005645), Modifier.weight(1f))
+                ProductRegisterActionButton("현금", Color(0xFFC1A57A), Modifier.weight(1f), textColor = Color(0xFF1A1A1A))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                ProductRegisterActionButton("기타시재", Color(0xFF6B7D8A), Modifier.weight(1f))
+                ProductRegisterActionButton("H.Point 사용", Color(0xFF005645), Modifier.weight(1f))
+                ProductRegisterActionButton("카드/모바일", Color(0xFFC1A57A), Modifier.weight(1f), textColor = Color(0xFF1A1A1A))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductRegisterActionButton(label: String, color: Color, modifier: Modifier, textColor: Color = Color.White) {
+    Button(
+        onClick = {},
+        modifier = modifier.height(74.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = textColor)
+    ) {
+        Text(label, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }
 
