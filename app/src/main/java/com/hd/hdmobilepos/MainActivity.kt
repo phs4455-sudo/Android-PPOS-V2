@@ -1,5 +1,6 @@
 package com.hd.hdmobilepos
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -19,6 +20,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,6 +36,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -77,6 +80,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -92,9 +96,15 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -267,6 +277,46 @@ class PaymentViewModel(initialSnapshot: PaymentOrderSnapshot) : ViewModel() {
             )
         }
     }
+}
+
+
+data class LastTransactionSummaryUi(
+    val itemCount: Int = 0,
+    val purchaseAmount: Int = 0,
+    val discountAmount: Int = 0,
+    val receivedAmount: Int = 0,
+    val changeAmount: Int = 0
+)
+
+data class SuperHomeUiState(
+    val barcodeInput: String = "",
+    val lastTransaction: LastTransactionSummaryUi = LastTransactionSummaryUi()
+)
+
+class SuperHomeViewModel : ViewModel() {
+    private val _uiState = MutableStateFlow(SuperHomeUiState())
+    val uiState: StateFlow<SuperHomeUiState> = _uiState.asStateFlow()
+
+    fun onBarcodeInputChanged(value: String) {
+        _uiState.update { it.copy(barcodeInput = value) }
+    }
+
+    fun consumeBarcodeForNavigation(): String? {
+        val barcode = _uiState.value.barcodeInput.trim()
+        if (barcode.isBlank()) return null
+        _uiState.update { it.copy(barcodeInput = "") }
+        return barcode
+    }
+}
+
+private const val ROUTE_RESTAURANT = "restaurant"
+private const val ROUTE_SUPER_HOME = "super_home"
+private const val ROUTE_PRODUCT_REGISTER = "product_register"
+private const val ROUTE_PRODUCT_REGISTER_WITH_ARG = "product_register?barcode={barcode}"
+private const val ARG_BARCODE = "barcode"
+
+private fun productRegisterRoute(barcode: String? = null): String {
+    return if (barcode.isNullOrBlank()) ROUTE_PRODUCT_REGISTER else "$ROUTE_PRODUCT_REGISTER?$ARG_BARCODE=${Uri.encode(barcode)}"
 }
 
 enum class UiMode {
@@ -705,11 +755,28 @@ private fun ActiveOrderDetails.toRightPanelUi(): RightOrderPanelUi {
 @Composable
 fun MainNavHost(vm: MainViewModel) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "restaurant") {
-        composable("restaurant") { RestaurantScreen(navController, vm) }
+    NavHost(navController = navController, startDestination = ROUTE_SUPER_HOME) {
+        composable(ROUTE_SUPER_HOME) {
+            val superHomeVm: SuperHomeViewModel = viewModel()
+            SuperHomeScreen(
+                superHomeVm = superHomeVm,
+                onNavigateToProductRegister = { barcode ->
+                    navController.navigate(productRegisterRoute(barcode))
+                }
+            )
+        }
+        composable(ROUTE_RESTAURANT) { RestaurantScreen(navController, vm) }
         composable("food/{tableId}") { backStackEntry ->
             val tableId = backStackEntry.arguments?.getString("tableId")?.toLongOrNull()
             FoodCourtScreen(navController = navController, vm = vm, tableId = tableId)
+        }
+        composable(ROUTE_PRODUCT_REGISTER_WITH_ARG) { backStackEntry ->
+            val barcode = backStackEntry.arguments?.getString(ARG_BARCODE)
+            ProductRegisterScreen(
+                navController = navController,
+                barcode = barcode,
+                onClose = { navController.popBackStack() }
+            )
         }
         composable("payment/{tableId}") { backStackEntry ->
             val tableId = backStackEntry.arguments?.getString("tableId")?.toLongOrNull()
@@ -777,6 +844,244 @@ private fun PosTopActionButton(label: String, icon: androidx.compose.ui.graphics
     ) {
         Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 4.dp), tint = Color.Black)
         Text(label, color = Color.Black)
+    }
+}
+
+
+@Composable
+fun SuperHomeScreen(
+    superHomeVm: SuperHomeViewModel,
+    onNavigateToProductRegister: (String?) -> Unit
+) {
+    val uiState by superHomeVm.uiState.collectAsState()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var barcodeHasFocus by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(barcodeHasFocus) {
+        if (!barcodeHasFocus) {
+            focusRequester.requestFocus()
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = { PosTopBar() },
+        containerColor = Color(0xFFF6F2E9),
+        bottomBar = {
+            SuperUtilityBar(
+                labels = listOf("고정 메뉴", "시재 점검", "셀프계산대 전환", "전달노트", "따라하기", "직원외 할인")
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = uiState.barcodeInput,
+                onValueChange = superHomeVm::onBarcodeInputChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { barcodeHasFocus = it.isFocused },
+                placeholder = { Text("바코드를 스캔하세요") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    val barcode = superHomeVm.consumeBarcodeForNavigation() ?: return@KeyboardActions
+                    onNavigateToProductRegister(barcode)
+                }),
+                shape = RoundedCornerShape(18.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(0.65f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        HeroTile(label = "상품판매", color = Color(0xFF005645), modifier = Modifier.weight(1f), onClick = {})
+                        HeroTile(
+                            label = "상품등록",
+                            color = Color(0xFFD8C3A5),
+                            textColor = Color(0xFF2E2E2E),
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigateToProductRegister(null) }
+                        )
+                        HeroTile(label = "통합조회", color = Color(0xFF5A6B7A), modifier = Modifier.weight(1f), onClick = {})
+                    }
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 4.dp)
+                    ) {
+                        gridItems(listOf("즐겨찾기", "행사보관", "영수증 조회", "소비기한 등록", "상품조회", "포인트 조회", "보류/복원", "도중회수")) { label ->
+                            Button(
+                                onClick = {},
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(88.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color(0xFF253238)
+                                )
+                            ) { Text(label, fontWeight = FontWeight.SemiBold) }
+                        }
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(0.35f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("직전결제내역", fontWeight = FontWeight.Bold, color = Color(0xFF005645))
+                            SummaryLine("상품수량", "${uiState.lastTransaction.itemCount}개")
+                            SummaryLine("구매금액", "${formatAmount(uiState.lastTransaction.purchaseAmount)}원")
+                            SummaryLine("할인금액", "${formatAmount(uiState.lastTransaction.discountAmount)}원")
+                            SummaryLine("받은금액", "${formatAmount(uiState.lastTransaction.receivedAmount)}원")
+                            SummaryLine("거스름돈", "${formatAmount(uiState.lastTransaction.changeAmount)}원")
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("직전 영수증 출력", "직전 거래 환불", "보류/복원", "도중회수").forEach { label ->
+                            Button(
+                                onClick = {},
+                                modifier = Modifier.fillMaxWidth().height(58.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5A6B7A), contentColor = Color.White)
+                            ) {
+                                Text(label, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { keyboardController?.hide() }
+    }
+
+    fun navigateWithBarcode() {
+        val barcode = superHomeVm.consumeBarcodeForNavigation() ?: return
+        onNavigateToProductRegister(barcode)
+        focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(uiState.barcodeInput) {
+        if (uiState.barcodeInput.contains("\n") || uiState.barcodeInput.contains("\r")) {
+            navigateWithBarcode()
+        }
+    }
+}
+
+@Composable
+private fun HeroTile(
+    label: String,
+    color: Color,
+    modifier: Modifier,
+    textColor: Color = Color.White,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(130.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = textColor)
+    ) {
+        Text(label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+@Composable
+private fun SummaryLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color(0xFF5A5A5A))
+        Text(value, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun SuperUtilityBar(labels: List<String>) {
+    Surface(color = Color(0xFFE8E0D2)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            labels.forEach { label ->
+                Button(
+                    onClick = {},
+                    modifier = Modifier.weight(1f).height(54.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6B7D8A), contentColor = Color.White)
+                ) {
+                    Text(label, textAlign = TextAlign.Center)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductRegisterScreen(
+    navController: NavHostController,
+    barcode: String?,
+    onClose: () -> Unit
+) {
+    Scaffold(topBar = { PosTopBar() }, containerColor = Color(0xFFF6F2E9)) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("판매용 상품등록", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color(0xFF005645))
+            Text(
+                text = if (barcode.isNullOrBlank()) "바코드 없이 진입했습니다." else "스캔 바코드: $barcode",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Button(onClick = onClose, modifier = Modifier.width(220.dp).height(56.dp), shape = RoundedCornerShape(14.dp)) {
+                Text("슈퍼 홈으로")
+            }
+            Button(onClick = { navController.navigate(ROUTE_RESTAURANT) }, modifier = Modifier.width(220.dp).height(56.dp), shape = RoundedCornerShape(14.dp)) {
+                Text("레스토랑 화면")
+            }
+        }
     }
 }
 
