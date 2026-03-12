@@ -64,6 +64,8 @@ import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
@@ -1397,7 +1399,7 @@ private fun ProductRegisterLeftPane(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("행사적용", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("주문 보류", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("보류/복원", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                     OutlinedButton(onClick = onClearAll, modifier = Modifier.weight(1f).height(54.dp)) { Text("전체취소", color = Color(0xFFC62828), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -1459,6 +1461,7 @@ private fun ProductRegisterRightPane(
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val manualInputAccentColor = Color(0xFF6B7D8A)
                     OutlinedTextField(
                         value = input,
                         onValueChange = { changed ->
@@ -1468,7 +1471,18 @@ private fun ProductRegisterRightPane(
                             .weight(1f)
                             .focusRequester(focusRequester),
                         label = { Text("수기 입력") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Keyboard,
+                                contentDescription = "수기 입력",
+                                tint = manualInputAccentColor
+                            )
+                        },
                         textStyle = MaterialTheme.typography.titleMedium,
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = manualInputAccentColor,
+                            unfocusedBorderColor = manualInputAccentColor.copy(alpha = 0.8f)
+                        ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
@@ -1547,14 +1561,14 @@ private fun ProductRegisterRightPane(
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProductRegisterActionButton("장바구니할인", Icons.Filled.LocalOffer, Color(0xFF6B7D8A), Modifier.weight(1f))
-                ProductRegisterActionButton("상품권", Icons.Filled.Redeem, Color(0xFF005645), Modifier.weight(1f))
-                ProductRegisterActionButton("현금", Icons.Filled.Savings, Color(0xFFC1A57A), Modifier.weight(1f))
+                ProductRegisterActionButton("장바구니할인", Icons.Filled.AddShoppingCart, Color(0xFF6B7D8A), Modifier.weight(0.9f))
+                ProductRegisterActionButton("상품권", Icons.Filled.CardGiftcard, Color(0xFF005645), Modifier.weight(0.9f))
+                ProductRegisterActionButton("현금", Icons.Filled.AttachMoney, Color(0xFFC1A57A), Modifier.weight(1.2f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProductRegisterActionButton("기타시재", Icons.Filled.PointOfSale, Color(0xFF6B7D8A), Modifier.weight(1f))
-                ProductRegisterActionButton("H.Point 사용", Icons.Filled.Stars, Color(0xFF005645), Modifier.weight(1f))
-                ProductRegisterActionButton("카드/모바일", Icons.Filled.CreditCard, Color(0xFFC1A57A), Modifier.weight(1f))
+                ProductRegisterActionButton("기타시재", Icons.Filled.PointOfSale, Color(0xFF6B7D8A), Modifier.weight(0.9f))
+                ProductRegisterActionButton("H.Point 사용", Icons.Filled.Stars, Color(0xFF005645), Modifier.weight(0.9f))
+                ProductRegisterActionButton("카드/모바일", Icons.Filled.CreditCard, Color(0xFFC1A57A), Modifier.weight(1.2f))
             }
         }
     }
@@ -2268,7 +2282,7 @@ fun FoodCourtScreen(navController: NavHostController, vm: MainViewModel, tableId
                         onClick = {},
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp)
-                    ) { Text("주문 보류", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    ) { Text("보류/복원", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                     OutlinedButton(
                         onClick = { showCancelAllDialog = true },
                         modifier = Modifier.weight(1f),
