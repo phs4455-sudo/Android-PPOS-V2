@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.Payment
@@ -52,8 +53,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CreditCard
@@ -63,10 +65,10 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
@@ -786,7 +788,12 @@ fun MainNavHost(vm: MainViewModel) {
             val barcode = backStackEntry.arguments?.getString(ARG_BARCODE)
             ProductRegisterScreen(
                 barcode = barcode,
-                onClose = { navController.popBackStack() }
+                onNavigateHome = {
+                    navController.navigate(ROUTE_SUPER_HOME) {
+                        popUpTo(ROUTE_SUPER_HOME) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable("payment/{tableId}") { backStackEntry ->
@@ -1070,7 +1077,7 @@ private fun SuperUtilityBar(labels: List<String>) {
 @Composable
 fun ProductRegisterScreen(
     barcode: String?,
-    onClose: () -> Unit
+    onNavigateHome: () -> Unit
 ) {
     val productRegisterVm: ProductRegisterViewModel = viewModel(
         key = "product_register_${barcode ?: "default"}",
@@ -1115,7 +1122,7 @@ fun ProductRegisterScreen(
                 onIncrease = productRegisterVm::increaseQty,
                 onDelete = productRegisterVm::deleteItem,
                 onClearAll = productRegisterVm::clearCart,
-                onClose = onClose,
+                onNavigateHome = onNavigateHome,
                 modifier = Modifier.weight(0.45f)
             )
             ProductRegisterRightPane(
@@ -1323,7 +1330,7 @@ private fun ProductRegisterLeftPane(
     onIncrease: (String) -> Unit,
     onDelete: (String) -> Unit,
     onClearAll: () -> Unit,
-    onClose: () -> Unit,
+    onNavigateHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1357,34 +1364,49 @@ private fun ProductRegisterLeftPane(
                 }
                 Divider(Modifier.padding(vertical = 8.dp))
                 Box(modifier = Modifier.weight(1f)) {
-                    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
-                        items(uiState.cartItems) { cartItem ->
-                            val index = uiState.cartItems.indexOf(cartItem) + 1
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                Text("$index", modifier = Modifier.width(40.dp))
-                                Column(modifier = Modifier.weight(1.2f)) {
-                                    Text(cartItem.product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                                    Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
+                    if (uiState.cartItems.isEmpty()) {
+                        Button(
+                            onClick = onNavigateHome,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .fillMaxWidth(0.5f)
+                                .fillMaxHeight(0.5f),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645), contentColor = Color.White)
+                        ) {
+                            Icon(Icons.Filled.Home, contentDescription = "홈화면", modifier = Modifier.padding(end = 8.dp))
+                            Text("홈화면", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        }
+                    } else {
+                        LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                            items(uiState.cartItems) { cartItem ->
+                                val index = uiState.cartItems.indexOf(cartItem) + 1
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Text("$index", modifier = Modifier.width(40.dp))
+                                    Column(modifier = Modifier.weight(1.2f)) {
+                                        Text(cartItem.product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                        Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
+                                    }
+                                    Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
+                                    Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                        androidx.compose.material3.IconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                        Text("${cartItem.qty}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                        androidx.compose.material3.IconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
+                                    }
+                                    Text(
+                                        "${formatAmount(cartItem.lineAmount)}",
+                                        modifier = Modifier.weight(0.8f),
+                                        textAlign = TextAlign.End,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    androidx.compose.material3.IconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
                                 }
-                                Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
-                                Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                                    androidx.compose.material3.IconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
-                                    Text("${cartItem.qty}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-                                    androidx.compose.material3.IconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
-                                }
-                                Text(
-                                    "${formatAmount(cartItem.lineAmount)}",
-                                    modifier = Modifier.weight(0.8f),
-                                    textAlign = TextAlign.End,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                androidx.compose.material3.IconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
+                                Divider()
                             }
-                            Divider()
                         }
                     }
-                    if (showScrollHint) {
+                    if (uiState.cartItems.isNotEmpty() && showScrollHint) {
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
                             contentDescription = "아래로 더보기",
@@ -1411,10 +1433,6 @@ private fun ProductRegisterLeftPane(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("받을 금액", fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                     Text("${formatAmount(uiState.receivedAmount)}원", fontWeight = FontWeight.ExtraBold, color = Color(0xFFD32F2F), fontSize = 24.sp)
-                }
-                OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth().height(46.dp)) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기", modifier = Modifier.padding(end = 6.dp))
-                    Text("뒤로가기", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1475,7 +1493,8 @@ private fun ProductRegisterRightPane(
                             Icon(
                                 imageVector = Icons.Filled.Keyboard,
                                 contentDescription = "수기 입력",
-                                tint = manualInputAccentColor
+                                tint = manualInputAccentColor,
+                                modifier = Modifier.width(29.dp).height(29.dp)
                             )
                         },
                         textStyle = MaterialTheme.typography.titleMedium,
@@ -1561,9 +1580,9 @@ private fun ProductRegisterRightPane(
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                ProductRegisterActionButton("장바구니할인", Icons.Filled.AddShoppingCart, Color(0xFF6B7D8A), Modifier.weight(0.9f))
-                ProductRegisterActionButton("상품권", Icons.Filled.CardGiftcard, Color(0xFF005645), Modifier.weight(0.9f))
-                ProductRegisterActionButton("현금", Icons.Filled.AttachMoney, Color(0xFFC1A57A), Modifier.weight(1.2f))
+                ProductRegisterActionButton("장바구니할인", Icons.Filled.ShoppingCart, Color(0xFF6B7D8A), Modifier.weight(0.9f))
+                ProductRegisterActionButton("상품권", Icons.Filled.Redeem, Color(0xFF005645), Modifier.weight(0.9f))
+                ProductRegisterActionButton("현금", Icons.Filled.Savings, Color(0xFFC1A57A), Modifier.weight(1.2f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 ProductRegisterActionButton("기타시재", Icons.Filled.PointOfSale, Color(0xFF6B7D8A), Modifier.weight(0.9f))
