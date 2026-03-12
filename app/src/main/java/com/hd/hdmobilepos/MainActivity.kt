@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -1185,6 +1186,24 @@ class InMemoryProductLookupGateway : ProductLookupGateway {
         ProductItemUi("fav_water", "생수 2L", 1100, "즐겨찾기", "880000100002"),
         ProductItemUi("veg_cabbage", "양배추", 3800, "채소", "880000100101"),
         ProductItemUi("veg_onion", "양파 1망", 4500, "채소", "880000100102"),
+        ProductItemUi("veg_spinach", "시금치", 2100, "채소", "880000100103"),
+        ProductItemUi("veg_lettuce", "상추", 2600, "채소", "880000100104"),
+        ProductItemUi("veg_potato", "감자 1봉", 3900, "채소", "880000100105"),
+        ProductItemUi("veg_sweet_potato", "고구마", 4200, "채소", "880000100106"),
+        ProductItemUi("veg_cucumber", "오이 2입", 1800, "채소", "880000100107"),
+        ProductItemUi("veg_carrot", "당근", 1500, "채소", "880000100108"),
+        ProductItemUi("veg_radish", "무", 2700, "채소", "880000100109"),
+        ProductItemUi("veg_green_onion", "대파", 1900, "채소", "880000100110"),
+        ProductItemUi("veg_mushroom", "느타리버섯", 3200, "채소", "880000100111"),
+        ProductItemUi("veg_paprika", "파프리카", 3400, "채소", "880000100112"),
+        ProductItemUi("veg_broccoli", "브로콜리", 2900, "채소", "880000100113"),
+        ProductItemUi("veg_tomato", "토마토", 4100, "채소", "880000100114"),
+        ProductItemUi("veg_garlic", "깐마늘", 5300, "채소", "880000100115"),
+        ProductItemUi("veg_pumpkin", "단호박", 3600, "채소", "880000100116"),
+        ProductItemUi("veg_bean_sprout", "콩나물", 1200, "채소", "880000100117"),
+        ProductItemUi("veg_chili", "청양고추", 1700, "채소", "880000100118"),
+        ProductItemUi("veg_eggplant", "가지", 2400, "채소", "880000100119"),
+        ProductItemUi("veg_zucchini", "애호박", 2200, "채소", "880000100120"),
         ProductItemUi("fruit_banana", "바나나", 4200, "과일", "880000100201"),
         ProductItemUi("fruit_orange", "오렌지", 5500, "과일", "880000100202"),
         ProductItemUi("water_small", "생수 500ml", 700, "생수", "880000100301"),
@@ -1307,6 +1326,24 @@ private fun ProductRegisterLeftPane(
 ) {
     Column(modifier = modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp), color = Color.White) {
+            val listState = rememberLazyListState()
+            val showScrollHint by remember(uiState.cartItems, listState) {
+                derivedStateOf {
+                    val visibleItems = listState.layoutInfo.visibleItemsInfo
+                    if (visibleItems.isEmpty()) return@derivedStateOf false
+                    visibleItems.last().index < uiState.cartItems.lastIndex
+                }
+            }
+            val bounceTransition = rememberInfiniteTransition(label = "productRegisterLeftScrollHint")
+            val bounceOffset by bounceTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 8f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "productRegisterLeftScrollHintOffset"
+            )
             Column(Modifier.fillMaxSize().padding(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("No.", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -1317,25 +1354,45 @@ private fun ProductRegisterLeftPane(
                     Spacer(Modifier.width(26.dp))
                 }
                 Divider(Modifier.padding(vertical = 8.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                    items(uiState.cartItems) { cartItem ->
-                        val index = uiState.cartItems.indexOf(cartItem) + 1
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            Text("$index", modifier = Modifier.width(40.dp))
-                            Column(modifier = Modifier.weight(1.2f)) {
-                                Text(cartItem.product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                                Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
+                Box(modifier = Modifier.weight(1f)) {
+                    LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                        items(uiState.cartItems) { cartItem ->
+                            val index = uiState.cartItems.indexOf(cartItem) + 1
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Text("$index", modifier = Modifier.width(40.dp))
+                                Column(modifier = Modifier.weight(1.2f)) {
+                                    Text(cartItem.product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                    Text(cartItem.product.barcode, color = Color.Gray, fontSize = 11.sp)
+                                }
+                                Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
+                                Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                    androidx.compose.material3.IconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
+                                    Text("${cartItem.qty}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                                    androidx.compose.material3.IconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
+                                }
+                                Text(
+                                    "${formatAmount(cartItem.lineAmount)}",
+                                    modifier = Modifier.weight(0.8f),
+                                    textAlign = TextAlign.End,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                androidx.compose.material3.IconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
                             }
-                            Text("${formatAmount(cartItem.product.price)}", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
-                            Row(modifier = Modifier.weight(0.9f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                                androidx.compose.material3.IconButton(onClick = { onDecrease(cartItem.product.id) }) { Icon(Icons.Filled.Remove, contentDescription = "감소") }
-                                Text("${cartItem.qty}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
-                                androidx.compose.material3.IconButton(onClick = { onIncrease(cartItem.product.id) }) { Icon(Icons.Filled.Add, contentDescription = "증가") }
-                            }
-                            Text("${formatAmount(cartItem.lineAmount)}", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyLarge)
-                            androidx.compose.material3.IconButton(onClick = { onDelete(cartItem.product.id) }) { Icon(Icons.Filled.Close, contentDescription = "삭제") }
+                            Divider()
                         }
-                        Divider()
+                    }
+                    if (showScrollHint) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "아래로 더보기",
+                            tint = Color(0xFF6B4B2A),
+                            modifier = Modifier
+                                .width(45.dp)
+                                .height(45.dp)
+                                .align(Alignment.BottomCenter)
+                                .offset(y = (-bounceOffset).dp)
+                        )
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1422,28 +1479,68 @@ private fun ProductRegisterRightPane(
                         )
                     )
                 }
-                LazyVerticalGrid(columns = GridCells.Fixed(4), contentPadding = PaddingValues(4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                    gridItems(uiState.categoryProducts) { product ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(92.dp)
-                                .clickable { onAddProduct(product) },
-                            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5F5F5))
-                        ) {
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(10.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
+                val gridState = rememberLazyGridState()
+                val showProductScrollHint by remember(uiState.categoryProducts, gridState) {
+                    derivedStateOf {
+                        val visibleItems = gridState.layoutInfo.visibleItemsInfo
+                        if (visibleItems.isEmpty()) return@derivedStateOf false
+                        val lastVisibleIndex = visibleItems.last().index
+                        lastVisibleIndex < uiState.categoryProducts.lastIndex
+                    }
+                }
+                val productBounceTransition = rememberInfiniteTransition(label = "productRegisterGridScrollHint")
+                val productBounceOffset by productBounceTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 8f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "productRegisterGridScrollHintOffset"
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(4),
+                        contentPadding = PaddingValues(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        gridItems(uiState.categoryProducts) { product ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(92.dp)
+                                    .clickable { onAddProduct(product) },
+                                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.White),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF5F5F5))
                             ) {
-                                Text(product.name, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                                Spacer(Modifier.height(6.dp))
-                                Text("${formatAmount(product.price)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                Column(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(product.name, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                    Spacer(Modifier.height(6.dp))
+                                    Text("${formatAmount(product.price)}", color = Color(0xFF005645), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                                }
                             }
                         }
+                    }
+                    if (showProductScrollHint) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "아래로 더보기",
+                            tint = Color(0xFF6B4B2A),
+                            modifier = Modifier
+                                .width(45.dp)
+                                .height(45.dp)
+                                .align(Alignment.BottomCenter)
+                                .offset(y = (-productBounceOffset).dp)
+                        )
                     }
                 }
             }
@@ -1472,7 +1569,7 @@ private fun ProductRegisterActionButton(
 ) {
     Button(
         onClick = {},
-        modifier = modifier.height(89.dp),
+        modifier = modifier.height(74.dp),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)
     ) {
