@@ -1354,7 +1354,12 @@ private fun ProductRegisterLeftPane(
                 label = "productRegisterLeftScrollHintOffset"
             )
             Column(Modifier.fillMaxSize().padding(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(0.96f)
+                        .align(Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text("No.", modifier = Modifier.width(40.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text("상품", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text("단가", modifier = Modifier.weight(0.7f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -1362,20 +1367,36 @@ private fun ProductRegisterLeftPane(
                     Text("금액", modifier = Modifier.weight(0.8f), textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(26.dp))
                 }
-                Divider(Modifier.padding(vertical = 8.dp))
-                Box(modifier = Modifier.weight(1f)) {
+                Divider(
+                    modifier = Modifier
+                        .fillMaxWidth(0.96f)
+                        .align(Alignment.CenterHorizontally)
+                        .padding(vertical = 8.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(0.96f)
+                        .align(Alignment.CenterHorizontally)
+                ) {
                     if (uiState.cartItems.isEmpty()) {
                         Button(
                             onClick = onNavigateHome,
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .width(220.dp)
-                                .height(88.dp),
+                                .width(540.dp)
+                                .height(216.dp),
                             shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645), contentColor = Color.White)
                         ) {
-                            Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.padding(end = 8.dp))
-                            Text("Home", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                            Icon(
+                                Icons.Filled.Home,
+                                contentDescription = "홈화면",
+                                modifier = Modifier
+                                    .padding(end = 12.dp)
+                                    .size(72.dp)
+                            )
+                            Text("홈화면", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.ExtraBold)
                         }
                     } else {
                         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
@@ -1499,7 +1520,6 @@ private fun ProductRegisterRightPane(
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(47.dp)
                             .focusRequester(focusRequester),
                         label = { Text("수기 입력") },
                         leadingIcon = {
