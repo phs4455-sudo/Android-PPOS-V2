@@ -1369,13 +1369,13 @@ private fun ProductRegisterLeftPane(
                             onClick = onNavigateHome,
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .fillMaxWidth(0.5f)
-                                .fillMaxHeight(0.5f),
+                                .width(220.dp)
+                                .height(88.dp),
                             shape = RoundedCornerShape(24.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF005645), contentColor = Color.White)
                         ) {
-                            Icon(Icons.Filled.Home, contentDescription = "홈화면", modifier = Modifier.padding(end = 8.dp))
-                            Text("홈화면", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                            Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.padding(end = 8.dp))
+                            Text("Home", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                         }
                     } else {
                         LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
@@ -1420,9 +1420,21 @@ private fun ProductRegisterLeftPane(
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("행사적용", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f).height(54.dp)) { Text("보류/복원", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
-                    OutlinedButton(onClick = onClearAll, modifier = Modifier.weight(1f).height(54.dp)) { Text("전체취소", color = Color(0xFFC62828), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier.weight(1f).height(54.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("행사적용", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(
+                        onClick = {},
+                        modifier = Modifier.weight(1f).height(54.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("보류/복원", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(
+                        onClick = onClearAll,
+                        modifier = Modifier.weight(1f).height(54.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("전체취소", color = Color(0xFFC62828), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -1487,6 +1499,7 @@ private fun ProductRegisterRightPane(
                         },
                         modifier = Modifier
                             .weight(1f)
+                            .height(47.dp)
                             .focusRequester(focusRequester),
                         label = { Text("수기 입력") },
                         leadingIcon = {
